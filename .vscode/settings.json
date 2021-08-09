@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "numberstorage.h": "c",
+        "libtest.h": "c",
+        "c_codegen.h": "c"
+    }
+}
