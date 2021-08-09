@@ -18,6 +18,9 @@ class RenderWindow {
     @Getter(frameCount)
     int RWGetFrameCount();
 
+    @Show(GetSize)
+    void RWGetSize(int* width, int* height);
+
     void Flush();
 
     void SetColour(int r, int g, int b, int a);
