@@ -17,6 +17,17 @@ def codegen(files: list[ParsedGenFile]) -> str:
     for file in files:
         lib_path = f"build{path.sep}{file.libpath_no_ext()}"
         lib_name = f"{lib_path}{shared_library_extension()}"
+
+        link_libs: list[str] = []
+
+        for annotation in file.annotations:
+            if annotation.name == "LinkWithLib":
+                link_libs.append(annotation.args[0])
+
+        command = f"gcc -shared -o {lib_name} -fPIC -I. {file.name_no_ext()}.c"
+        for lib in link_libs:
+            command += f" -l{lib}"
+
         # todo: #included dependencies
         out += generate_makefile_item(
             lib_name,
@@ -25,9 +36,7 @@ def codegen(files: list[ParsedGenFile]) -> str:
             ],
             [
                 f"mkdir -p {path.dirname(lib_name)}",
-                f"gcc -shared -o {lib_name} -fPIC {file.name_no_ext()}.c"# -Wl,--out-implib={lib_name}.a"
-                #f"gcc -c -fpic -o {lib_path}.o {file.name_no_ext()}.c",
-                #f"gcc -shared -o {lib_name} {lib_path}.o"
+                command
             ]
         )
 
@@ -58,6 +67,7 @@ def codegen(files: list[ParsedGenFile]) -> str:
         ],
         [
             "dart run"
+            #"dart run --enable-vm-service"
         ]
     ) + generate_makefile_item(
         "clean",

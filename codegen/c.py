@@ -2,12 +2,12 @@ from codegen_types import *
 from banner import *
 
 def generate_enum(enum: CodegenEnum) -> str:
-    out = f"enum {enum.name} {{\n"
+    out = f"typedef enum {{\n"
 
     for i, val in enumerate(enum.values):
         out += f"    {enum.name}_{val.name} = {i},\n"
     
-    out += "};\n\n"
+    out += f"}} {enum.name};\n\n"
 
     return out
 

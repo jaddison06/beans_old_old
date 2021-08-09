@@ -1,0 +1,28 @@
+@LinkWithLib(SDL2)
+
+enum SDLInitCode {
+    Success, // Success
+    InitVideo_Fail, // SDL_InitVideo() failed
+    CreateWindow_Fail, // SDL_CreateWindow() failed
+    CreateRenderer_Fail // SDL_CreateRenderer() failed
+}
+
+class RenderWindow {
+    @Initializer()
+    void* InitRenderWindow(char* title);
+
+    @Show(Destroy)
+    @Invalidates()
+    void DestroyRenderWindow();
+
+    @Getter(frameCount)
+    int RWGetFrameCount();
+
+    void Flush();
+
+    void SetColour(int r, int g, int b, int a);
+    void DrawPoint(int x, int y);
+    void DrawLine(int x1, int y1, int x2, int y2);
+    void DrawRect(int x, int y, int w, int h);
+    void FillRect(int x, int y, int w, int h);
+}

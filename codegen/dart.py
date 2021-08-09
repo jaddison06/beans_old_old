@@ -10,14 +10,16 @@ NATIVE: dict[str, str] = {
     "void": "Void",
     "char": "Utf8",
     "int": "Int32",
-    "double": "Double"
+    "double": "Double",
+    "bool": "Int32"
 }
 
 DART: dict[str, str] = {
     "void": "void",
     "char": "Utf8",
     "int": "int",
-    "double": "double"
+    "double": "double",
+    "bool": "int"
 }
 
 # omg globals! what the hell jaddison! you're a terrible programmer and i hope you eat shit!
@@ -54,7 +56,7 @@ def method_sig_name(file: ParsedGenFile, class_: CodegenClass, method: CodegenFu
     return out
 
 def func_typedefs(funcs: list[CodegenFunction], getName: Callable[[CodegenFunction, bool], str]) -> str:
-    out = ""
+    out: str = ""
 
     for func in funcs:
         out += f"// {func.signature_string()}\n"
@@ -65,7 +67,12 @@ def func_typedefs(funcs: list[CodegenFunction], getName: Callable[[CodegenFuncti
                 out += ", "
         out += ");\n"
 
-        out += f"typedef {getName(func, False)} = {get_typename(func.return_type, DART)} Function("
+        out += f"typedef {getName(func, False)} = "
+
+        return_typename = get_typename(func.return_type, DART)
+        out += return_typename
+
+        out += " Function("
         for i, param_type in enumerate(func.params.values()):
             out += get_typename(param_type, DART)
             if i!= len(func.params) - 1:
@@ -93,6 +100,8 @@ def param_list(func: CodegenFunction) -> str:
         # THIS IS WHERE STUFF FOR ENUMS, STRUCTS, ETC WILL GO !!!
         if dart_type == "Pointer<Utf8>":
             dart_type = "String"
+        elif param_type.typename == "bool":
+            dart_type = "bool"
         elif lookup.is_enum(param_type.typename):
             dart_type = param_type.typename
         
@@ -127,6 +136,15 @@ def func_class_init_refs(funcs: list[CodegenFunction], getName: Callable[[Codege
 
     return out
 
+def func_class_func_return_type(func: CodegenFunction) -> str:
+    typename = get_typename(func.return_type, DART)
+    if func.return_type.typename == "bool":
+        typename = "bool"
+    elif lookup.is_enum(func.return_type.typename):
+        typename = func.return_type.typename
+
+    return typename
+
 def func_params(func: CodegenFunction) -> str:
     out = ""
 
@@ -135,6 +153,8 @@ def func_params(func: CodegenFunction) -> str:
         param_typename = get_typename(param_type, DART)
         if param_typename == "Pointer<Utf8>":
             out += f"{param_name}.toNativeUtf8()"
+        elif param_type.typename == "bool":
+            out += f"{param_name} ? 1 : 0"
         elif lookup.is_enum(param_type.typename):
             out += f"{param_type.typename}ToInt({param_name})"
         else:
@@ -142,6 +162,20 @@ def func_params(func: CodegenFunction) -> str:
         
         if i != len(func.params) - 1:
             out += ", "
+
+    return out
+
+def func_class_return_string(func: CodegenFunction, get_value: str) -> str:
+    out = ""
+
+    if func.return_type.typename == "bool":
+        out += f"({get_value}) == 1"
+    elif lookup.is_enum(func.return_type.typename):
+        out += f"{func.return_type.typename}FromInt({get_value})"
+    else:
+        out += get_value
+
+    out += ";\n"
 
     return out
 
@@ -181,7 +215,7 @@ def funcs(file: ParsedGenFile) -> str:
     out += "    }\n\n"
 
     for func in file.functions:
-        out += f"    {get_typename(func.return_type, DART)} {func.name}("
+        out += f"    {func_class_func_return_type(func)} {func.name}("
         # for i, param_name in enumerate(func.params):
         #     param_type = func.params[param_name]
         #     dart_type = get_typename(param_type, DART)
@@ -200,10 +234,10 @@ def funcs(file: ParsedGenFile) -> str:
 
         out += param_list(func)
 
-        out += f"        return _{func.name}("
-        out += func_params(func)
-        
-        out += ");\n"
+        out +=  "        return "
+        out += func_class_return_string(func,
+            f"_{func.name}({func_params(func)})"
+        )
         out += "    }\n\n"
     
     out += "}\n\n\n"
@@ -221,6 +255,7 @@ def enums(file: ParsedGenFile) -> str:
         for value in enum.values:
             out += f"    {value.name},\n"
         out += "}\n\n"
+        #'''
         out += f"{enum.name} {enum.name}FromInt(int val) => {enum.name}.values[val];\n"
         out += f"int {enum.name}ToInt({enum.name} val) => {enum.name}.values.indexOf(val);\n\n"
         out += f"String {enum.name}ToString({enum.name} val) {{\n"
@@ -229,6 +264,21 @@ def enums(file: ParsedGenFile) -> str:
             out += f"        case {enum.name}.{value.name}: {{ return '{value.stringify_as}'; }}\n"
         out += "    }\n"
         out += "}\n\n"
+        #'''
+        # not using an extension because you can't override toString() and I want it to be all or nothing
+        '''
+        out += f"extension on {enum.name} {{\n"
+        out += f"    static {enum.name} fromInt(int val) => {enum.name}.values[val];\n"
+        out += f"    int toInt() => {enum.name}.values.indexOf(this);\n\n"
+        out +=  "    @override\n"
+        out +=  "    String toString() {\n"
+        out +=  "        switch (this) {\n"
+        for value in enum.values:
+            out += f"            case {enum.name}.{value.name}: {{return '{value.stringify_as}'; }}\n"
+        out += "        }\n"
+        out += "    }\n"
+        out += "}\n\n"
+        '''
 
     return out
 
@@ -267,21 +317,39 @@ def classes(file: ParsedGenFile) -> str:
 
         for method in class_.methods:
             if has_annotation(method.annotations, "Initializer"): continue
-            
-            method_show_name = method.name
-            if has_annotation(method.annotations, "Show"):
-                method_show_name = get_annotation(method.annotations, "Show").args[0]
-            
-            out += f"    {get_typename(method.return_type, DART)} {method_show_name}("
+
             # hopefully it's not mutable !!!!!
             del method.params["struct_ptr"]
-            out += param_list(method)
+
+            if has_annotation(method.annotations, "Getter"):
+                param_count = len(method.params)
+                assert param_count == 0, f"A getter cannot take any parameters, but {method.name} takes {param_count}"
+                out += f"    {func_class_func_return_type(method)} get "
+                out += get_annotation(method.annotations, "Getter").args[0]
+                out += " {\n"
+
+            else:            
+                method_show_name = method.name
+                if has_annotation(method.annotations, "Show"):
+                    method_show_name = get_annotation(method.annotations, "Show").args[0]
+                
+                out += f"    {func_class_func_return_type(method)} {method_show_name}("
+                out += param_list(method)
+
             out += f"        _validatePointer('{method.name}');\n"
-            out += f"        return _{method.name}(structPointer"
+            get_return_value = f"_{method.name}(structPointer"
             if len(method.params) > 0:
-                out += ", "
-            out += func_params(method)
-            out += ");\n"
+                get_return_value += ", "
+            get_return_value += func_params(method)
+            get_return_value += ")"
+            return_string = func_class_return_string(method, get_return_value)
+            if has_annotation(method.annotations, "Invalidates"):
+                out += f"        final out = {return_string}"
+                out += "\n        // this method invalidates the pointer, probably by freeing memory\n"
+                out += "        structPointer = Pointer.fromAddress(0);\n\n"
+                out += "        return out;\n"
+            else:
+                out += f"        return {return_string}"
             out += "    }\n\n"
         
         out += "}\n\n"

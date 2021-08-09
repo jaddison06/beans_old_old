@@ -2,6 +2,7 @@
     "files.associations": {
         "numberstorage.h": "c",
         "libtest.h": "c",
-        "c_codegen.h": "c"
+        "c_codegen.h": "c",
+        "sdl.h": "c"
     }
 }

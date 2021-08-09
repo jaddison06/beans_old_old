@@ -125,13 +125,14 @@ class Parser:
 
     def parse_annotation(self, annotation: str) -> CodegenAnnotation:
         assert "(" in annotation, "Annotations must end with parentheses, even if they have no arguments."
+        if not annotation.endswith("\n"):
+            annotation += "\n"
 
         name, args_raw = annotation[1:].split("(")
         args: list[str] = []
         if not args_raw == ")\n":
             args = strip_all(
-                # used to be -2, is there a newline issue?
-                args_raw[:-1].split(",")
+                args_raw[:-2].split(",")
             )
         return CodegenAnnotation(
             name,
