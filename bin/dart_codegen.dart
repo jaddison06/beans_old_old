@@ -52,6 +52,10 @@ typedef _libRenderWindow_class_RenderWindow_method_InitRenderWindow_sig = Pointe
 typedef _libRenderWindow_class_RenderWindow_method_DestroyRenderWindow_native_sig = Void Function(Pointer<Void>);
 typedef _libRenderWindow_class_RenderWindow_method_DestroyRenderWindow_sig = void Function(Pointer<Void>);
 
+// SDLInitCode RWGetErrorCode(void* struct_ptr)
+typedef _libRenderWindow_class_RenderWindow_method_RWGetErrorCode_native_sig = Int32 Function(Pointer<Void>);
+typedef _libRenderWindow_class_RenderWindow_method_RWGetErrorCode_sig = int Function(Pointer<Void>);
+
 // int RWGetFrameCount(void* struct_ptr)
 typedef _libRenderWindow_class_RenderWindow_method_RWGetFrameCount_native_sig = Int32 Function(Pointer<Void>);
 typedef _libRenderWindow_class_RenderWindow_method_RWGetFrameCount_sig = int Function(Pointer<Void>);
@@ -97,6 +101,7 @@ class RenderWindow {
 
     late _libRenderWindow_class_RenderWindow_method_InitRenderWindow_sig _InitRenderWindow;
     late _libRenderWindow_class_RenderWindow_method_DestroyRenderWindow_sig _DestroyRenderWindow;
+    late _libRenderWindow_class_RenderWindow_method_RWGetErrorCode_sig _RWGetErrorCode;
     late _libRenderWindow_class_RenderWindow_method_RWGetFrameCount_sig _RWGetFrameCount;
     late _libRenderWindow_class_RenderWindow_method_RWGetSize_sig _RWGetSize;
     late _libRenderWindow_class_RenderWindow_method_Flush_sig _Flush;
@@ -111,6 +116,7 @@ class RenderWindow {
 
         _InitRenderWindow = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_InitRenderWindow_native_sig, _libRenderWindow_class_RenderWindow_method_InitRenderWindow_sig>('InitRenderWindow');
         _DestroyRenderWindow = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DestroyRenderWindow_native_sig, _libRenderWindow_class_RenderWindow_method_DestroyRenderWindow_sig>('DestroyRenderWindow');
+        _RWGetErrorCode = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_RWGetErrorCode_native_sig, _libRenderWindow_class_RenderWindow_method_RWGetErrorCode_sig>('RWGetErrorCode');
         _RWGetFrameCount = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_RWGetFrameCount_native_sig, _libRenderWindow_class_RenderWindow_method_RWGetFrameCount_sig>('RWGetFrameCount');
         _RWGetSize = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_RWGetSize_native_sig, _libRenderWindow_class_RenderWindow_method_RWGetSize_sig>('RWGetSize');
         _Flush = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_Flush_native_sig, _libRenderWindow_class_RenderWindow_method_Flush_sig>('Flush');
@@ -131,6 +137,11 @@ class RenderWindow {
         structPointer = Pointer.fromAddress(0);
 
         return out;
+    }
+
+    SDLInitCode get errorCode {
+        _validatePointer('RWGetErrorCode');
+        return SDLInitCodeFromInt(_RWGetErrorCode(structPointer));
     }
 
     int get frameCount {

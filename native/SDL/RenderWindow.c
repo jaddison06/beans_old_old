@@ -16,6 +16,10 @@ int RWGetFrameCount(RenderWindow* rw) {
     return rw->frameCount;
 }
 
+SDLInitCode RWGetErrorCode(RenderWindow* rw) {
+    return rw->errorCode;
+}
+
 void RWGetSize(RenderWindow* rw, int* width, int* height) {
     SDL_GetWindowSize(rw->win, width, height);
 }

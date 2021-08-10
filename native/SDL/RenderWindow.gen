@@ -15,6 +15,9 @@ class RenderWindow {
     @Invalidates()
     void DestroyRenderWindow();
 
+    @Getter(errorCode)
+    SDLInitCode RWGetErrorCode();
+
     @Getter(frameCount)
     int RWGetFrameCount();
 

@@ -8,7 +8,7 @@ class Beans {
   late final BeansWindowManager _wm;
 
   Beans() {
-    _rw = RenderWindow("beans");
+    _rw = RenderWindow('beans');
     _wm = BeansWindowManager(_rw);
   }
 
