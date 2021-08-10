@@ -127,7 +127,7 @@ class ParsedGenFile:
         return path.splitext(self.name)[0]
     
     def libpath_no_ext(self) -> str:
-        return path.dirname(self.name) + path.sep + "lib" + self.id()
+        return path.dirname(self.name) + path.sep + self.libname()
     
     def libname(self) -> str:
         return f"lib{self.id()}"

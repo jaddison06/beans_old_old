@@ -2,6 +2,8 @@
 
 #include "native/c_codegen.h"
 
+// todo: render text, images
+
 typedef struct {
     SDL_Window* win;
     SDL_Renderer* ren;

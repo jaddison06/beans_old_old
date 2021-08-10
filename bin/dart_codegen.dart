@@ -4,21 +4,6 @@ import 'package:ffi/ffi.dart';
 
 // ----------FILE: NATIVE/SDL/RENDERWINDOW.GEN----------
 
-// ----------FUNCTION SIGNATURE TYPEDEFS----------
-
-// ----------LIBRENDERWINDOW----------
-
-class libRenderWindow {
-
-
-    libRenderWindow() {
-        final lib = DynamicLibrary.open('build/native/SDL/libRenderWindow.so');
-
-    }
-
-}
-
-
 // ----------ENUMS----------
 
 enum SDLInitCode {
@@ -187,21 +172,6 @@ class RenderWindow {
 }
 
 // ----------FILE: NATIVE/SDL/EVENT.GEN----------
-
-// ----------FUNCTION SIGNATURE TYPEDEFS----------
-
-// ----------LIBEVENT----------
-
-class libEvent {
-
-
-    libEvent() {
-        final lib = DynamicLibrary.open('build/native/SDL/libEvent.so');
-
-    }
-
-}
-
 
 // ----------ENUMS----------
 

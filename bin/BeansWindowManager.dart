@@ -1,11 +1,20 @@
+import 'dart:html';
+
 import 'BeansWindow.dart';
 import 'dart_codegen.dart';
 import 'BeansRenderer.dart';
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 import 'ColourWindow.dart';
+import 'dart:math';
 
-/// WindowData represents metadata about a BeansWindow, needed by the BeansWindowManager.
+extension on Iterable<num> {
+  num sum() {
+    return reduce((value, element) => value + element);
+  }
+}
+
+/// WindowData represents metadata about a [BeansWindow], needed by the [BeansWindowManager].
 class WindowData {
   int x;
   int y;
@@ -16,7 +25,7 @@ class WindowData {
   BeansWindow window;
 
   /// Tests if the event at (x, y) occured inside this window.
-  /// hitTest is *inclusive* on the left/top and *exclusive* on the right/bottom.
+  /// [hitTest] is *inclusive* on the left/top and *exclusive* on the right/bottom.
   bool hitTest(int x, int y) {
     return (
       x >= this.x &&
@@ -47,13 +56,14 @@ enum BeansWindowLayoutMode {
 }
 
 /// BeansWindowManager is responsible for:
-/// - Rendering BeansWindows
-/// - Turning the raw Events from SDL into a more usable format
+/// - Rendering [BeansWindow]s
+/// - Turning the raw [Event]s from SDL into a more usable format
 /// - Hit-testing windows and passing these events to them
 /// - Allowing the user to resize, relocate, add, or remove windows
 /// - Rendering window decorations and other UI elements
 class BeansWindowManager {
   late final BeansRenderer _ren;
+  final RenderWindow _rw;
 
   final Pointer<Int32> _x;
   final Pointer<Int32> _y;
@@ -68,12 +78,12 @@ class BeansWindowManager {
 
   String? panicMsg;
 
-  BeansWindowManager(RenderWindow rw) :
+  BeansWindowManager(this._rw) :
     _x = malloc<Int32>(),
     _y = malloc<Int32>()
   {
     _ren = BeansRenderer(
-      rw: rw,
+      rw: _rw,
       render: _render,
       event: _event
     );
@@ -92,15 +102,31 @@ class BeansWindowManager {
   /// get current cross axis size of the window
   int crossSize(WindowData wd) => isColumns ? wd.width : wd.height;
 
-  /// for a column: finds the window with the largest minWidth.
-  int minCrossAxisSize(List<WindowData> collection) {
+
+  /// for a column: if every window in the column was at `minHeight`, how tall would the whole thing be?
+  int minPossibleMainSize(List<WindowData> collection) {
+    return collection.map((wd) => minMainSize(wd.window)).sum().toInt();
+  }
+
+  /// for a column: finds the window with the largest `minWidth`.
+  int minPossibleCrossSize(List<WindowData> collection) {
     return minCrossSize(collection.reduce((value, element) => minCrossSize(value.window) > minCrossSize(element.window) ? value : element).window);
   }
 
-  /// for a column: if every window in the column was at minHeight, how tall would the whole thing be?
-  int minPossibleSize(List<WindowData> collection) {
-    return collection.map((wd) => minMainSize(wd.window)).reduce((value, element) => value + element);
+  /// get the current total main axis size of the collection
+  int totalMainAxisSize(List<WindowData> collection) {
+    // 2 ways of doing it
+    //_rw.GetSize(_x, _y);
+    //return isColumns ? _y.value : _x.value;
+    return collection.map((wd) => mainSize(wd)).sum().toInt();
   }
+
+  /// get the total cross axis size of the [RenderWindow]
+  int totalCrossAxisSize() {
+    _rw.GetSize(_x, _y);
+    return isColumns ? _x.value : _y.value;
+  }
+
 
   /// for a column, the X position of the window's left edge.
   int alignedStart(WindowData wd) {
@@ -124,6 +150,8 @@ class BeansWindowManager {
     return offsetStart(wd) + mainSize(wd);
   }
 
+
+  /// set the main axis size of a window
   void setMainSize(WindowData wd, int newSize) {
     if (isColumns) {
       wd.height = newSize;
@@ -132,6 +160,7 @@ class BeansWindowManager {
     }
   }
 
+  /// set the cross axis size of a window
   void setCrossSize(WindowData wd, int newSize) {
     if (isColumns) {
       wd.width = newSize;
@@ -140,9 +169,43 @@ class BeansWindowManager {
     }
   }
 
-  /// does setup for the WindowData. assumes that resizing of other windows has already been done.
-  /// assumes it is **not** a floating window, and that the cross size is valid.
-  void addToCollection(BeansWindow win, int collectionIdx, int mainSize_, {bool focus = true}) {
+  /// set the position of a window on the main axis
+  void setMainPos(WindowData wd, int newPos) {
+    if (isColumns) {
+      wd.y = newPos;
+    } else {
+      wd.x = newPos;
+    }
+  }
+
+  /// set the position of a window on the cross axis
+  void setCrossPos(WindowData wd, int newPos) {
+    if (isColumns) {
+      wd.x = newPos;
+    } else {
+      wd.y = newPos;
+    }
+  }
+
+
+  /// change the cross axis size of a whole collection
+  void resizeCollection(int collectionIdx, int newCrossSize) {
+    for (var wd in _windows[collectionIdx]) {
+      setCrossSize(wd, newCrossSize);
+    }
+  }
+
+  /// change the cross axis position of a whole collection
+  void setCollectionPos(int collectionIdx, int newCrossPos) {
+    for (var wd in _windows[collectionIdx]) {
+      setCrossPos(wd, newCrossPos);
+    }
+  }
+
+
+  /// does setup for the [WindowData]. assumes that resizing of other windows has already been done.
+  /// assumes it is **not** a floating window, and that [mainSize_] is valid.
+  void addWindowToCollection(BeansWindow win, int collectionIdx, int mainSize_, {bool focus = true}) {
 
     final previous = _windows[collectionIdx].last;
     final mainPos = offsetEnd(previous);
@@ -164,76 +227,291 @@ class BeansWindowManager {
 
   bool get isColumns => layoutMode == BeansWindowLayoutMode.Columns;
 
+  /// Check if resizing the collection at [collectionIdx] to [newCrossSize] would cause the layout to overflow.
+  bool wouldOverflow(int collectionIdx, int newCrossSize) {
+    final totalMainSize = totalMainAxisSize(_windows.last);
+    var sum = 0;
+    for (int i=0; i<_windows.length; i++) {
+      if (i == collectionIdx) {
+        sum += newCrossSize;
+      } else {
+        sum += minPossibleCrossSize(_windows[i]);
+      }
+    }
+    return sum > totalMainSize;
+  }
 
-  // TODO: somewhere in here we need to check whether the window's cross axis size would be bigger than that of the
-  // target collection. idk if that should be part of STATE 1, or somewhere in between 1 & 2. Anyway, once all this
-  // logic is implemented we can start putting some ColourWindows onscreen.
-  //
-  /// Adds a BeansWindow to the layout
-  /// logic:
-  /// - STATE 1: If it can be added to the end of a column/row by resizing the final window and *nothing else*, put it there. If there
-  /// are multiple columns/rows to which this is applicable, choose the one with the most free space for the final window.
-  /// - STATE 2: Otherwise, if it can be added to the end of a column/row by resizing all windows closer to their minimum size, do that.
-  /// Same as above in that if there are multiple possibilities, the most spacious is chosen.
-  /// - STATE 3: Otherwise, create a new column/row where the new window takes up the maximum size along the main axis. Resize all columns/rows
-  /// so that their relative size remains the same, but the new window takes up a relatively even amount of space which is
-  /// larger than its minimum.
-  /// - STATE 4 (ERROR): Otherwise, display an error message to the user.
-  void addWindow(BeansWindow window) {
-    final candidates = <int>[];
-    int? selectedCollection;
+  /// Resize all collections so that the collection at [collectionIdx] has a crossSize of [newCrossSize].
+  /// 
+  /// Similarly to [addState2], all other collections are scaled so that either they're at the same size relative to each
+  /// other, or they're at their minimum size. Assumes that doing so won't overflow the layout.
+  void resizeCollections(int collectionIdx, int newCrossSize) {
+    // total cross axis size of the whole layout
+    final totalCrossSize = totalCrossAxisSize();
+    final collection = _windows[collectionIdx];
+    // previous crossSize of the collection
+    final oldCrossSize = collection.isEmpty ? 0 : crossSize(collection.last);
+    // ratio to reduce/increase the size of all other collections by.
+    //! this must be a double
+    final ratio = (totalCrossSize - (newCrossSize - oldCrossSize)) / totalCrossSize;
 
-    // iterate over _windows to see if STATE 1 is applicable
+    List<WindowData>? previousCollection;
     for (var i=0; i<_windows.length; i++) {
-      final collection = _windows[i];
+      final modifyCollection = _windows[i];
+      if (i == collectionIdx) {
+        // resize the selected collection to newCrossSize
+        resizeCollection(i, newCrossSize);
+      } else {
+        // resize the collection to either its current size * the ratio, or its mininum size, whichever is bigger.
+        resizeCollection(i,
+          max(
+            (crossSize(modifyCollection.last) * ratio).toInt(),
+            minPossibleCrossSize(modifyCollection)
+          )
+        );
+      }
+      // reposition the collection
+      setCollectionPos(i, previousCollection == null ? 0 : alignedEnd(previousCollection.last));
+      previousCollection = modifyCollection;
+    }
+
+  }
+
+  /// If the window's [minCrossSize] is smaller than the collection's [crossSize], resize the collection to accommodate the
+  /// window. Assumes that doing so won't overflow the layout.
+  void resizeIfNeeded(int collectionIdx, BeansWindow win) {
+    final collection = _windows[collectionIdx];
+    if (minCrossSize(win) > crossSize(collection.last)) {
+      resizeCollections(collectionIdx, minCrossSize(win));
+    }
+  }
+
+  /// Get the best candidate collection for State 1 or 2, based on the amount of resizing needed.
+  /// 
+  /// Returns `null` if the result is inconclusive - a specific discriminator should then be used to determine the winner.
+  /// - If only one window needs a resize, then the other one wins.
+  /// - If both windows need a resize, the winner is the one with the smallest resize, or inconclusive if they are equal.
+  /// - If neither needs a resize, the result is inconclusive.
+  int? bestState1Or2Candidate(BeansWindow win, int a, int b) {
+    final candA = _windows[a];
+    final candB = _windows[b];
+    final aNeedsResize = minCrossSize(win) > crossSize(candA.last);
+    final bNeedsResize = minCrossSize(win) > crossSize(candB.last);
+    if (aNeedsResize && bNeedsResize) {
+      // smallest resize wins
+      final aResize = crossSize(candA.last) - minCrossSize(win);
+      final bResize = crossSize(candB.last) - minCrossSize(win);
+      if (aResize > bResize) {
+        return a;
+      } else if (bResize > aResize) {
+        return b;
+      } else {
+        // both need an equal resize
+        return null;
+      }
+    } else if (!aNeedsResize && bNeedsResize) {
+      return a;
+    } else if (aNeedsResize && !bNeedsResize) {
+      return b;
+    } else {
+      // inconclusive
+      return null;
+    }
+  }
+
+  /// Get the best candidate collection for State 1.
+  /// 
+  /// [bestState1Or2Candidate] is used initially. If this is inconclusive, the most spacious collection is used.
+  int bestState1Candidate(BeansWindow win, int a, int b) {
+    final resizeBest = bestState1Or2Candidate(win, a, b);
+    if (resizeBest != null) {
+      return resizeBest;
+    }
+
+    final candA = _windows[a];
+    final candB = _windows[b];
+    final aFreeSpace = mainSize(candA.last) - minMainSize(candA.last.window);
+    final bFreeSpace = mainSize(candB.last) - minMainSize(candB.last.window);
+
+    if (aFreeSpace > bFreeSpace) {
+      return a;
+    } else {
+      // ok yeah so if they're equal b will get chosen
+      return b;
+    }
+  }
+
+  /// Get the best candidate collection for State 2
+  /// 
+  /// [bestState1Or2Candidate] is used initially. If this is inconclusive, the collection with the largest
+  /// [minPossibleMainSize], ie the one which will be squashed the least, is used.
+  int bestState2Candidate(BeansWindow win, int a, int b) {
+    final resizeBest = bestState1Or2Candidate(win, a, b);
+    if (resizeBest != null) {
+      return resizeBest;
+    }
+
+    final candA = _windows[a];
+    final candB = _windows[b];
+    if (minPossibleMainSize(candA) > minPossibleMainSize(candB)) {
+      return a;
+    } else {
+      // again, if they're equal b will be returned
+      return b;
+    }
+  }
+
+  /// Add a window to a collection using State 1 rules. Assumes that there is enough space, and that this won't cause the
+  /// layout to overflow.
+  void addState1(BeansWindow win, int collectionIdx) {
+    final collection = _windows[collectionIdx];
+    // Gap between the two windows if they were both at their minMainSize
+    final gap = mainSize(collection.last) - (minMainSize(collection.last.window) + minMainSize(win));
+    /// resize the current final window
+    setMainSize(collection.last, minMainSize(collection.last.window) + (gap ~/ 2));
+    resizeIfNeeded(collectionIdx, win);
+    addWindowToCollection(win, collectionIdx, minMainSize(win) + (gap ~/ 2));
+  }
+
+  /// Add a window to a collection using State 2 rules. Assumes that there is enough space, and that this won't cause the
+  /// layout to overflow.
+  void addState2(BeansWindow win, int collectionIdx) {
+    final collection = _windows[collectionIdx];
+    final currentMainSize = totalMainAxisSize(collection);
+    //! must be a double
+    final ratio = (currentMainSize - minMainSize(win)) / currentMainSize;
+    WindowData? previousWindow;
+    for (var modifyWindow in collection) {
+      setMainSize(modifyWindow,
+        max(
+          (mainSize(modifyWindow) * ratio).toInt(),
+          minMainSize(modifyWindow.window)
+        )
+      );
+      setMainPos(modifyWindow, previousWindow == null ? 0 : offsetEnd(previousWindow));
+      previousWindow = modifyWindow;
+    }
+    resizeIfNeeded(collectionIdx, win);
+    addWindowToCollection(win, collectionIdx, minMainSize(win));
+  }
+
+  /// Create a new collection and add the window to it using State 3 rules. Assumes that doing so won't overflow the layout.
+  void addState3(BeansWindow win) {
+    final totalMainSize = totalMainAxisSize(_windows.last);
+    _windows.add(<WindowData>[]);
+    resizeCollections(_windows.length, minCrossSize(win));
+    addWindowToCollection(win, _windows.length, totalMainSize);
+  }
+
+  /// Display an error message telling the user that there is not enough space to create the window.
+  void state4(String windowTitle) {
+
+  }
+
+  /// Adds a [BeansWindow] to the layout
+  /// 
+  /// logic:
+  /// - STATE 1: Add the window to the end of an existing collection. In the main axis, resize **only** the last window, to
+  /// halfway between its minimum size and that of the new window. In the cross axis, only resize the collection if the new
+  /// window requires it - this is undesirable.
+  /// - STATE 2: Add the window to the end of an existing collection. In the main axis, scale all the windows in the collection
+  /// so that they keep their relative size, or hit their minimum. In the cross axis, only resize the collection if the new
+  /// window requires it - this is undesirable.
+  /// - STATE 3: Add a new collection at the end of the layout with a mainSize of the window's [minMainSize] and a cross size
+  /// of the [RenderWindow]'s maximum possible cross size.
+  /// - STATE 4: Display an error message.
+  void addWindow(BeansWindow win) {
+    final candidates = <int>[];
+    int? selection;
+
+    //* CHECK FOR STATE 1 CANDIDATES
+    for (var i=0; i<_windows.length; i++) {
+      final candidate = _windows[i];
       if (
-        // we can resize the last window in the main axis to fit this one in
-        (mainSize(collection.last) - minMainSize(collection.last.window) > minMainSize(window)) &&
-        // we won't have to change the cross size of the collection
-        (crossSize(collection.last) >= minCrossSize(window))
+        // it will be able to fit in at the end by resizing ONLY the final window
+        (
+          mainSize(candidate.last) >= (
+            minMainSize(candidate.last.window) +
+            minMainSize(win)
+          )
+        ) &&
+        (
+          // EITHER it doesn't need a resize
+          (
+            minCrossSize(win) <= crossSize(candidate.last)
+          ) ||
+          // OR it does need a resize, but the resize wouldn't cause a layout overflow.
+          (
+            !wouldOverflow(i, minCrossSize(win))
+          )
+        )
       ) {
         candidates.add(i);
       }
     }
 
     if (candidates.length == 1) {
-      // we found one suitable candidate - select it.
-      selectedCollection = candidates.first;
-
+      selection = candidates.first;
     } else if (candidates.length > 1) {
-      // multiple candidates found - iterate over them to find the most spacious
-      var best = 0;
-      for (var i=1; i<candidates.length; i++) {
-        final bestCol = _windows[best];
-        final compare = _windows[i];
-        final bestDiff = mainSize(bestCol.last) - minMainSize(bestCol.last.window);
-        final compareDiff = mainSize(compare.last) - minMainSize(compare.last.window);
-        if (compareDiff > bestDiff) {
-          best = i;
-        }
-      }
-      selectedCollection = candidates[best];
+      selection = candidates.reduce((a, b) => bestState1Candidate(win, a, b));
     }
 
-    if (selectedCollection != null) {
-      // we found a STATE 1 collection!
-      final modifying = _windows[selectedCollection].last;
-      final gap = mainSize(modifying) - (minMainSize(modifying.window) + minMainSize(window));
-      setMainSize(modifying, minMainSize(modifying.window) + (gap ~/ 2));
-      addToCollection(
-        window,
-        selectedCollection,
-        minMainSize(window) + (gap ~/ 2)
-      );
-
-      // we're done
+    // did we find a suitable candidate for State 1?
+    if (selection != null) {
+      addState1(win, selection);
       return;
     }
 
-    // check for a STATE 2 collection
-    for (var collection in _windows) {
-      if (minPossibleSize(collection))
+    //* CHECK FOR STATE 2 CANDIDATES
+    for (var i=0; i<_windows.length; i++) {
+      final candidate = _windows[i];
+      if (
+        // It will be able to fit into the collection if all windows are resized
+        (
+          totalMainAxisSize(candidate) >= (
+            minPossibleMainSize(candidate) +
+            minMainSize(win)
+          )
+        ) &&
+        // Same as state 1
+        (
+          (
+            minCrossSize(win) <= crossSize(candidate.last)
+          ) ||
+          (
+            !wouldOverflow(i, minCrossSize(win))
+          )
+        )
+      ) {
+        candidates.add(i);
+      }
     }
+
+    if (candidates.length == 1) {
+      selection = candidates.first;
+    } else if (candidates.length > 1) {
+      selection = candidates.reduce((a, b) => bestState2Candidate(win, a, b));
+    }
+
+    // did we find a suitable candidate for State 2?
+    if (selection != null) {
+      addState2(win, selection);
+      return;
+    }
+
+    //* CHECK IF STATE 3 IS APPLICABLE
+    if (
+      // a new collection with a cross size of the window's minCrossSize will fit into the layout
+      totalCrossAxisSize() >= (
+        _windows.map((collection) => minPossibleCrossSize(collection)).sum() +
+        minCrossSize(win)
+      )
+    ) {
+      addState3(win);
+      return;
+    }
+
+    state4(win.title);
 
   }
 
@@ -250,8 +528,9 @@ class BeansWindowManager {
   WindowData get _focusedWindow => _allWindows().where((wd) => wd.isFocused).first;
 
   void _render(RenderWindow rw) {
-    // TODO: decorations etc
+    // todo: decorations etc
     for (var win in _allWindows()) {
+      // todo: if an error occurs during the render, display it in place of the window
       win.window.render(
         rw,
         win.x,
@@ -262,7 +541,7 @@ class BeansWindowManager {
     }
   }
 
-  /// update the focused window based on _x and _y
+  /// update the focused window based on [_x] and [_y]
   void _setFocusedWindow() {
     if (!_focusedWindow.hitTest(_x.value, _y.value)) {
       _focusedWindow.isFocused = false;

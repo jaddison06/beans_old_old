@@ -13,6 +13,9 @@ class ColourWindow extends BeansWindow {
   ColourWindow(this.minWidth, this.minHeight, this.r, this.g, this.b, this.onClick);
 
   @override
+  String get title => 'ColourWindow($r, $g, $b)';
+
+  @override
   void render(RenderWindow rw, int x, int y, int width, int height) {
     rw.SetColour(r, g, b, 255);
     rw.FillRect(x, y, width, height);

@@ -182,6 +182,8 @@ def func_class_return_string(func: CodegenFunction, get_value: str) -> str:
 def funcs(file: ParsedGenFile) -> str:
     out: str = ""
 
+    if len(file.functions) == 0: return out
+
     out += banner("function signature typedefs")
     # for func in file.functions:
     #     out += f"// {func.signature_string()}\n"
@@ -249,6 +251,8 @@ def funcs(file: ParsedGenFile) -> str:
 def enums(file: ParsedGenFile) -> str:
     out = ""
 
+    if len(file.enums) == 0: return out
+
     out += banner("enums")
     for enum in file.enums:
         out += f"enum {enum.name} {{\n"
@@ -287,6 +291,8 @@ def structs(file: ParsedGenFile) -> str: return ""
 def classes(file: ParsedGenFile) -> str:
     out: str = ""
 
+    if len(file.classes) == 0: return out
+
     out += banner("func sig typedefs for classes")
     for class_ in file.classes:
         out += banner(class_.name)
@@ -303,6 +309,8 @@ def classes(file: ParsedGenFile) -> str:
         out +=  "    }\n\n"
 
         out += func_class_private_refs(class_.methods, lambda method: method_sig_name(file, class_, method, False))
+
+        # todo: static functions which get looked up _once_
 
         initializer = class_.initializer()
         out += f"    {class_.name}("
@@ -336,6 +344,7 @@ def classes(file: ParsedGenFile) -> str:
                 out += f"    {func_class_func_return_type(method)} {method_show_name}("
                 out += param_list(method)
 
+            # todo: call validatePointer using the method's user-facing name, not the C name.
             out += f"        _validatePointer('{method.name}');\n"
             get_return_value = f"_{method.name}(structPointer"
             if len(method.params) > 0:
