@@ -56,6 +56,10 @@ enum BeansWindowLayoutMode {
   Rows
 }
 
+// todo:
+//   - Replace all uses of idx with the actual candidate - they're mutable
+//   - Create a class for a collection & calculate window positions dynamically - this gets rid of the rounding error
+//     where windows would be 1 or 2 pixels too small.
 /// BeansWindowManager is responsible for:
 /// - Rendering [BeansWindow]s
 /// - Turning the raw [Event]s from SDL into a more usable format
@@ -71,7 +75,6 @@ class BeansWindowManager {
 
   final List<List<WindowData>> _windows = [];
   
-  //List<WindowData> _allWindows() => _windows.isEmpty ? [] : _windows.reduce((value, element) => value.toList()..addAll(element));
   int get _windowCount => _windows.map((collection) => collection.length).sum();
 
   /// Iterate over each window in _windows. [cb] should return true as a kind of break statement - this facilitates
@@ -89,8 +92,6 @@ class BeansWindowManager {
   final List<BeansWindow> _testWindows = [];
 
   final layoutMode = BeansWindowLayoutMode.Rows;
-
-  String? panicMsg;
 
   BeansWindowManager(this._rw) :
     _x = malloc<Int32>(),
@@ -152,9 +153,6 @@ class BeansWindowManager {
       addWindow(_testWindows[_windowCount]);
     }
   }
-
-  // todo: ok something fucky is happening when we try to add window #5. loads of extras get added, and it seems like the longer
-  // you leave it after clicking, the more appear. It's a State 3, which is intentional. It should be 100x900, cyan.
 
   /// get minimum main axis size of the window
   int minMainSize (BeansWindow win) => isColumns ? win.minHeight : win.minWidth;
@@ -265,33 +263,6 @@ class BeansWindowManager {
       setCrossPos(wd, newCrossPos);
     }
   }
-
-
-  /*///does setup for the [WindowData]. assumes that resizing of other windows has already been done.
-  /// assumes it is **not** a floating window, and that [mainSize_] is valid.
-  void addWindowToCollection(BeansWindow win, int collectionIdx, int mainSize_, {bool focus = true, int? crossSize}) {
-
-    final previous = _windows[collectionIdx].isEmpty ? null : _windows[collectionIdx].last;
-    final previousCollection = collectionIdx == 0 ? null : _windows[collectionIdx - 1];
-    final mainPos = previous == null ? 0 : offsetEnd(previous);
-    final crossPos = previous == null ? (
-      // if previousCollection exists, assume it's got windows in it
-      previousCollection == null ? 0 : alignedEnd(previousCollection.last)
-    ) : alignedStart(previous);
-    final crossSize_ = previous == null ? (crossSize ?? minCrossSize(win)) : crossSize(previous);
-
-    _windows[collectionIdx].add(
-      WindowData(
-        x: isColumns ? crossPos : mainPos,
-        y: isColumns ? mainPos : crossPos,
-        width:  isColumns ? crossSize_ : mainSize_,
-        height: isColumns ? mainSize_ : crossSize_,
-        window: win,
-        isFloating: false,
-        isFocused: focus
-      )
-    );
-  }*/
 
   /// Calculates x, y, width, height and initializes the [WindowData]. Assumes that resizing of other windows
   /// has already been done, and that it is **not** a floating window.
