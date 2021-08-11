@@ -669,7 +669,7 @@ class BeansWindowManager {
         wd.height
       );
     });
-    final font = FontCache.family()[24];
+    final font = FontCache.family().font();
     rw.DrawText(font.structPointer, 'DEEZ NUTSSSSSSS', 15, 15, 0, 0, 0, 255);
   }
 

@@ -17,9 +17,15 @@ class FontCache {
     }
   }
 
-  /// Get the [Font] with size [size]
-  /// Do **not** call [Font.Destroy].
-  Font operator [](int size) {
+  /// Get the [Font] with size [size]. Similarly to [family], if [size] is null, then [defaultSize] is used. If that's
+  /// also null, a [StateError] is thrown.
+  /// 
+  /// Do **not** call [Font.Destroy] on the returned [Font].
+  Font font([int? size]) {
+    if (size == null) {
+      if (defaultSize == null) throw StateError('FontCache.font was called with a null size and a null defaultSize.');
+      size = defaultSize!;
+    }
     if (!_fonts.containsKey(size)) {
       _fonts[size] = Font(_fontName, size);
     }
@@ -31,10 +37,11 @@ class FontCache {
   static final _instances = <String, FontCache>{};
 
   static String? defaultFamily;
+  static int? defaultSize;
 
   /// get a [FontCache] for the font file at [fontName].
   /// 
-  /// If [fontName] is null, then [defaultFamily] is used. If that's also null, a StateError is thrown.
+  /// If [fontName] is null, then [defaultFamily] is used. If that's also null, a [StateError] is thrown.
   static FontCache family([String? fontName]) {
     if (fontName == null) {
       if (defaultFamily == null) throw StateError('FontCache.family was called with a null fontName and a null defaultFamily.');

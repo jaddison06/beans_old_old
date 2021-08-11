@@ -47,8 +47,9 @@ class Beans {
 
 void main() {
   FontCache.defaultFamily = 'res/DroidSansMono/DroidSansMono.ttf';
+  FontCache.defaultSize = 24;
   final beans = Beans();
   beans.start();
   beans.destroy();
-  //FontCache.destroyAll();
+  FontCache.destroyAll();
 }
