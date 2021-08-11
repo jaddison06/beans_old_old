@@ -5,9 +5,10 @@ from parse import *
 from codegen_types import *
 from paths import *
 
+import dart
 import c
 import makefile
-import dart
+import cloc_exclude_list
 
 def all_with_extension(directory: str, ext: str) -> list[str]:
     out: list[str] = []
@@ -25,12 +26,14 @@ def main():
             Parser(gen_file).parse()
         )
     
-    with open(DART_OUTPUT_PATH, "wt") as fh:
-        fh.write(dart    .codegen(parsed_files))
-    with open(C_OUTPUT_PATH,    "wt") as fh:
-        fh.write(c       .codegen(parsed_files))
-    with open("Makefile",       "wt") as fh:
-        fh.write(makefile.codegen(parsed_files))
+    with open(DART_OUTPUT_PATH,       "wt") as fh:
+        fh.write(dart             .codegen(parsed_files))
+    with open(C_OUTPUT_PATH,          "wt") as fh:
+        fh.write(c                .codegen(parsed_files))
+    with open("Makefile",             "wt") as fh:
+        fh.write(makefile         .codegen(parsed_files))
+    with open(CLOC_EXCLUDE_LIST_PATH, "wt") as fh:
+        fh.write(cloc_exclude_list.codegen())
 
     
 
