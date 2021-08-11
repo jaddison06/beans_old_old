@@ -10,8 +10,6 @@ typedef struct {
     SDLInitCode errorCode;
 
     int frameCount;
-
-    int width, height;
 } RenderWindow;
 
 int RWGetFrameCount(RenderWindow* rw) {
@@ -23,7 +21,18 @@ SDLInitCode RWGetErrorCode(RenderWindow* rw) {
 }
 
 void RWGetSize(RenderWindow* rw, int* width, int* height) {
-    SDL_GetWindowSize(rw->win, width, height);
+    // Not sure if this'll happen on real Linux, but on Windows with Xming,
+    // the window doesn't go fullscreen immediately - it freezes briefly at
+    // a resolution of 320x200. This doesn't block. So, if you call SDL_GetWindowSize
+    // right after program start, it'll return weird values. The solution is to 
+    //! always use SDL_GetCurrentDisplayMode to get window size.
+
+    //SDL_GetWindowSize(rw->win, width, height);
+    SDL_DisplayMode DM;
+    SDL_GetCurrentDisplayMode(0, &DM);
+    *width = DM.w;
+    *height = DM.h;
+    //printf("(%ix%i)\n", *width, *height);
 }
 
 RenderWindow* LogSDLError(RenderWindow* win, int exitCode) {

@@ -1,5 +1,3 @@
-import 'dart:html';
-
 import 'BeansWindow.dart';
 import 'dart_codegen.dart';
 import 'BeansRenderer.dart';
@@ -8,9 +6,9 @@ import 'package:ffi/ffi.dart';
 import 'ColourWindow.dart';
 import 'dart:math';
 
-extension on Iterable<num> {
-  num sum() {
-    return reduce((value, element) => value + element);
+extension on Iterable<int> {
+  int sum() {
+    return isEmpty ? 0 : reduce((value, element) => value + element);
   }
 }
 
@@ -37,6 +35,9 @@ class WindowData {
 
   int get x2 => x + width;
   int get y2 => y + height;
+
+  @override
+  String toString() => 'WindowData: ${window.title} @ ($x, $y), (${width}x$height)';
 
   WindowData({
     required this.x,
@@ -70,7 +71,20 @@ class BeansWindowManager {
 
   final List<List<WindowData>> _windows = [];
   
-  List<WindowData> _allWindows() => _windows.reduce((value, element) => value..addAll(element));
+  //List<WindowData> _allWindows() => _windows.isEmpty ? [] : _windows.reduce((value, element) => value.toList()..addAll(element));
+  int get _windowCount => _windows.map((collection) => collection.length).sum();
+
+  /// Iterate over each window in _windows. [cb] should return true as a kind of break statement - this facilitates
+  /// breaking out of both loops at the same time.
+  void _forEachWindow(bool? Function(WindowData) cb) {
+    for (var collection in _windows) {
+      for (var window in collection) {
+        if (cb(window) == true) {
+          return;
+        }
+      }
+    }
+  }
 
   final List<BeansWindow> _testWindows = [];
 
@@ -88,9 +102,59 @@ class BeansWindowManager {
       event: _event
     );
     _testWindows.addAll([
-      
+      ColourWindow(
+        minWidth: 69,
+        minHeight: 150,
+        r: 255,
+        g: 0,
+        b: 0,
+        onClick: addNextTest
+      ),
+      ColourWindow(
+        minWidth: 500,
+        minHeight: 250,
+        r: 66,
+        g: 22,
+        b: 120,
+        onClick: addNextTest
+      ),
+      ColourWindow(
+        minWidth: 100,
+        minHeight: 600,
+        r: 255,
+        g: 255,
+        b: 0,
+        onClick: addNextTest
+      ),
+      ColourWindow(
+        minWidth: 1500,
+        minHeight: 50,
+        r: 0,
+        g: 255,
+        b: 0,
+        onClick: addNextTest
+      ),
+      ColourWindow(
+        minWidth: 100,
+        minHeight: 900,
+        r: 0,
+        g: 255,
+        b: 255,
+        onClick: addNextTest
+      )
     ]);
+    addNextTest();
   }
+
+  void addNextTest() {
+    if (_windowCount < _testWindows.length) {
+      print('adding new test window!');
+      addWindow(_testWindows[_windowCount]);
+    }
+  }
+
+  // todo: ok something fucky is happening when we try to add window #5. loads of extras get added, and it seems like the longer
+  // you leave it after clicking, the more appear. It's a State 3, which is intentional. It should be 100x900, cyan.
 
   /// get minimum main axis size of the window
   int minMainSize (BeansWindow win) => isColumns ? win.minHeight : win.minWidth;
@@ -114,11 +178,11 @@ class BeansWindowManager {
   }
 
   /// get the current total main axis size of the collection
-  int totalMainAxisSize(List<WindowData> collection) {
+  int totalMainAxisSize(/*List<WindowData> collection*/) {
     // 2 ways of doing it
-    //_rw.GetSize(_x, _y);
-    //return isColumns ? _y.value : _x.value;
-    return collection.map((wd) => mainSize(wd)).sum().toInt();
+    _rw.GetSize(_x, _y);
+    return isColumns ? _y.value : _x.value;
+    //return collection.map((wd) => mainSize(wd)).sum().toInt();
   }
 
   /// get the total cross axis size of the [RenderWindow]
@@ -203,14 +267,18 @@ class BeansWindowManager {
   }
 
 
-  /// does setup for the [WindowData]. assumes that resizing of other windows has already been done.
+  /*///does setup for the [WindowData]. assumes that resizing of other windows has already been done.
   /// assumes it is **not** a floating window, and that [mainSize_] is valid.
-  void addWindowToCollection(BeansWindow win, int collectionIdx, int mainSize_, {bool focus = true}) {
+  void addWindowToCollection(BeansWindow win, int collectionIdx, int mainSize_, {bool focus = true, int? crossSize}) {
 
-    final previous = _windows[collectionIdx].last;
-    final mainPos = offsetEnd(previous);
-    final crossPos = alignedStart(previous);
-    final crossSize_ = crossSize(previous);
+    final previous = _windows[collectionIdx].isEmpty ? null : _windows[collectionIdx].last;
+    final previousCollection = collectionIdx == 0 ? null : _windows[collectionIdx - 1];
+    final mainPos = previous == null ? 0 : offsetEnd(previous);
+    final crossPos = previous == null ? (
+      // if previousCollection exists, assume it's got windows in it
+      previousCollection == null ? 0 : alignedEnd(previousCollection.last)
+    ) : alignedStart(previous);
+    final crossSize_ = previous == null ? (crossSize ?? minCrossSize(win)) : crossSize(previous);
 
     _windows[collectionIdx].add(
       WindowData(
@@ -223,22 +291,39 @@ class BeansWindowManager {
         isFocused: focus
       )
     );
+  }*/
+
+  /// Calculates x, y, width, height and initializes the [WindowData]. Assumes that resizing of other windows
+  /// has already been done, and that it is **not** a floating window.
+  void addWindowToCollection(BeansWindow win, int collectionIdx, {required int mainPos, required int crossPos, required int mainSize_, required int crossSize_, bool focus = true}) {
+    final collection = _windows[collectionIdx];
+    collection.add(
+      WindowData(
+        x: isColumns ? crossPos : mainPos,
+        y: isColumns ? mainPos : crossPos,
+        width: isColumns ? crossSize_ : mainSize_,
+        height: isColumns ? mainSize_ : crossSize_,
+        window: win,
+        isFloating: false,
+        isFocused: focus
+      )
+    );
   }
 
   bool get isColumns => layoutMode == BeansWindowLayoutMode.Columns;
 
   /// Check if resizing the collection at [collectionIdx] to [newCrossSize] would cause the layout to overflow.
   bool wouldOverflow(int collectionIdx, int newCrossSize) {
-    final totalMainSize = totalMainAxisSize(_windows.last);
+    final totalCrossSize = totalCrossAxisSize();
     var sum = 0;
-    for (int i=0; i<_windows.length; i++) {
+    for (var i=0; i<_windows.length; i++) {
       if (i == collectionIdx) {
         sum += newCrossSize;
       } else {
         sum += minPossibleCrossSize(_windows[i]);
       }
     }
-    return sum > totalMainSize;
+    return sum > totalCrossSize;
   }
 
   /// Resize all collections so that the collection at [collectionIdx] has a crossSize of [newCrossSize].
@@ -370,14 +455,21 @@ class BeansWindowManager {
     /// resize the current final window
     setMainSize(collection.last, minMainSize(collection.last.window) + (gap ~/ 2));
     resizeIfNeeded(collectionIdx, win);
-    addWindowToCollection(win, collectionIdx, minMainSize(win) + (gap ~/ 2));
+    addWindowToCollection(
+      win,
+      collectionIdx,
+      mainPos: offsetEnd(collection.last),
+      crossPos: alignedStart(collection.last),
+      mainSize_: minMainSize(win) + (gap ~/ 2),
+      crossSize_: crossSize(collection.last)
+    );
   }
 
   /// Add a window to a collection using State 2 rules. Assumes that there is enough space, and that this won't cause the
   /// layout to overflow.
   void addState2(BeansWindow win, int collectionIdx) {
     final collection = _windows[collectionIdx];
-    final currentMainSize = totalMainAxisSize(collection);
+    final currentMainSize = totalMainAxisSize();
     //! must be a double
     final ratio = (currentMainSize - minMainSize(win)) / currentMainSize;
     WindowData? previousWindow;
@@ -392,20 +484,54 @@ class BeansWindowManager {
       previousWindow = modifyWindow;
     }
     resizeIfNeeded(collectionIdx, win);
-    addWindowToCollection(win, collectionIdx, minMainSize(win));
+    addWindowToCollection(
+      win,
+      collectionIdx,
+      mainPos: offsetEnd(collection.last),
+      crossPos: alignedStart(collection.last),
+      mainSize_: minMainSize(win),
+      crossSize_: crossSize(collection.last)
+    );
   }
 
   /// Create a new collection and add the window to it using State 3 rules. Assumes that doing so won't overflow the layout.
   void addState3(BeansWindow win) {
-    final totalMainSize = totalMainAxisSize(_windows.last);
+    final totalMainSize = totalMainAxisSize();
+    final totalCrossSize = totalCrossAxisSize();
+    
+    final currentTotalMinCrossSize = _windows.map((collection) => minPossibleCrossSize(collection)).sum();
+    // gap between all the current collections at their minPossibleCrossSize and this window at its minCrossSize
+    final gap = totalCrossSize - (currentTotalMinCrossSize + minCrossSize(win));
+    final crossSize_ = minCrossSize(win) + (gap ~/ 2);
+
+    final previousCollection = _windows.isEmpty ? null : _windows.last;
+
     _windows.add(<WindowData>[]);
-    resizeCollections(_windows.length, minCrossSize(win));
-    addWindowToCollection(win, _windows.length, totalMainSize);
+
+    resizeCollections(_windows.length - 1, crossSize_);
+    addWindowToCollection(
+      win,
+      _windows.length - 1,
+      mainPos: 0,
+      crossPos: previousCollection == null ? 0 : alignedEnd(previousCollection.last),
+      mainSize_: totalMainSize,
+      crossSize_: previousCollection == null ? totalCrossSize : crossSize_
+    );
   }
 
   /// Display an error message telling the user that there is not enough space to create the window.
   void state4(String windowTitle) {
 
+  }
+
+  /// Display a popup informing the user of an *internal* Beans error. Maybe also log the error? idk.
+  void error(String msg) {
+    print(msg);
+  }
+
+  /// Something has gone seriously wrong, but the RenderWindow is still alive, so display a graphical panic screen.
+  void gpanic(Object exception, StackTrace trace) {
+    
   }
 
   /// Adds a [BeansWindow] to the layout
@@ -417,10 +543,22 @@ class BeansWindowManager {
   /// - STATE 2: Add the window to the end of an existing collection. In the main axis, scale all the windows in the collection
   /// so that they keep their relative size, or hit their minimum. In the cross axis, only resize the collection if the new
   /// window requires it - this is undesirable.
-  /// - STATE 3: Add a new collection at the end of the layout with a mainSize of the window's [minMainSize] and a cross size
-  /// of the [RenderWindow]'s maximum possible cross size.
+  /// - STATE 3: Add a new collection at the end of the layout. The cross size is the [RenderWindow]'s maximum possible
+  /// cross size. The main size is halfway between the new window's [minMainSize] and the [minPossibleMainSize] of all the
+  /// collections so far.
   /// - STATE 4: Display an error message.
   void addWindow(BeansWindow win) {
+    //print('addWindow: ${win.title}');
+
+    _rw.GetSize(_x, _y);
+    if (
+      win.minWidth > _x.value ||
+      win.minHeight > _y.value
+    ) {
+      error('Window ${win.title} had out-of-bounds minimum size: (${win.minWidth}x${win.minHeight}) in a (${_x.value}x${_y.value}) window.');
+      return;
+    }
+
     final candidates = <int>[];
     int? selection;
 
@@ -458,6 +596,7 @@ class BeansWindowManager {
 
     // did we find a suitable candidate for State 1?
     if (selection != null) {
+      print('state 1!!');
       addState1(win, selection);
       return;
     }
@@ -468,7 +607,7 @@ class BeansWindowManager {
       if (
         // It will be able to fit into the collection if all windows are resized
         (
-          totalMainAxisSize(candidate) >= (
+          totalMainAxisSize() >= (
             minPossibleMainSize(candidate) +
             minMainSize(win)
           )
@@ -495,6 +634,7 @@ class BeansWindowManager {
 
     // did we find a suitable candidate for State 2?
     if (selection != null) {
+      print('state 2!!');
       addState2(win, selection);
       return;
     }
@@ -507,17 +647,23 @@ class BeansWindowManager {
         minCrossSize(win)
       )
     ) {
+      print('state 3!!');
       addState3(win);
       return;
     }
-
+    
+    print('state 4!!');
     state4(win.title);
 
   }
 
   /// Starts the event loop.
   void start() {
-    _ren.run();
+    try {
+      _ren.run();
+    } catch (e, trace) {
+      gpanic(e, trace);
+    }
   }
 
   /// Destroys any memory that has been allocated
@@ -525,54 +671,69 @@ class BeansWindowManager {
     _ren.destroy();
   }
 
-  WindowData get _focusedWindow => _allWindows().where((wd) => wd.isFocused).first;
+  WindowData? get _focusedWindow {
+    WindowData? out;
+    _forEachWindow((wd) {
+      if (wd.isFocused) {
+        out = wd;
+        // assume there's only one focused window at a time
+        return true;
+      }
+    });
+    
+    return out;
+  }
 
   void _render(RenderWindow rw) {
     // todo: decorations etc
-    for (var win in _allWindows()) {
+    _forEachWindow((wd) {
       // todo: if an error occurs during the render, display it in place of the window
-      win.window.render(
+      wd.window.render(
         rw,
-        win.x,
-        win.y,
-        win.width,
-        win.height
+        wd.x,
+        wd.y,
+        wd.width,
+        wd.height
       );
-    }
+    });
   }
 
   /// update the focused window based on [_x] and [_y]
   void _setFocusedWindow() {
-    if (!_focusedWindow.hitTest(_x.value, _y.value)) {
-      _focusedWindow.isFocused = false;
-      for (var win in _allWindows()) {
-        if (win.hitTest(_x.value, _y.value)) {
-          win.isFocused = true;
-          break;
+    if (!(_focusedWindow?.hitTest(_x.value, _y.value) ?? false)) {
+      _focusedWindow?.isFocused = false;
+      _forEachWindow((wd) {
+        if (wd.hitTest(_x.value, _y.value)) {
+          wd.isFocused = true;
+          return true;
         }
-      }
+      });
     }
   }
 
   void _event(Event event) {
     switch (event.type) {
       case SDLEventType.KeyDown: {
-        _focusedWindow.window.onKeyDown(event.GetKeyPressReleaseData());
+        _focusedWindow?.window.onKeyDown(event.GetKeyPressReleaseData());
         break;
       }
 
       case SDLEventType.MouseMove: {
         event.GetMouseMoveData(_x, _y);
 
-        _focusedWindow.window.onMouseMove(_x.value, _y.value);
+        _focusedWindow?.window.onMouseMove(_x.value, _y.value);
         break;
       }
 
       case SDLEventType.MouseDown: {
         final button = event.GetMousePressReleaseData(_x, _y);
         _setFocusedWindow();
+
+        if (button == MouseButton.Right) {
+          _ren.quit();
+        }
         
-        _focusedWindow.window.onMouseDown(_x.value, _y.value, button);
+        _focusedWindow?.window.onMouseDown(_x.value, _y.value, button);
         break;
       }
 

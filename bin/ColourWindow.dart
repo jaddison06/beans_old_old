@@ -10,7 +10,14 @@ class ColourWindow extends BeansWindow {
   final int r, g, b;
   final void Function() onClick;
 
-  ColourWindow(this.minWidth, this.minHeight, this.r, this.g, this.b, this.onClick);
+  ColourWindow({
+    required this.minWidth,
+    required this.minHeight,
+    required this.r,
+    required this.g,
+    required this.b,
+    required this.onClick
+  });
 
   @override
   String get title => 'ColourWindow($r, $g, $b)';

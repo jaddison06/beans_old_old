@@ -16,20 +16,25 @@ class Beans {
     _wm = BeansWindowManager(_rw);
   }
 
-  /// panic w/ terminal output
+  /// Something has gone seriously wrong and the WindowManager has died, so print a panic message to the terminal.
   Never _panic(String msg) {
     print(msg);
+    destroy();
     exit(0);
+  }
+
+  /// execute some code with a catchall
+  void _catchAll(void Function() code) {
+    try {
+      code();
+    } catch (e, trace) {
+      _panic('A fatal exception occured within Beans:\n$e\nOccured at:\n$trace');
+    }
   }
 
   /// Start the event loop
   void start() {
-    try {
-      _wm.start();
-    } catch (e, trace) {
-      destroy();
-      _panic('Exception:\n$e\nOccured at:\n$trace');
-    }
+    _catchAll(() => _wm.start());
   }
 
   /// Free resources
