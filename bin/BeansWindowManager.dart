@@ -34,6 +34,11 @@ class WindowData {
     );
   }
 
+  /// Render [window] using [x], [y], [width] and [height].
+  void render(RenderWindow rw) {
+    window.render(rw, x, y, width, height);
+  }
+
   int get x2 => x + width;
   int get y2 => y + height;
 
@@ -657,7 +662,7 @@ class BeansWindowManager {
     return out;
   }
 
-  void _render(RenderWindow rw) {
+  /*void _render(RenderWindow rw) {
     // todo: decorations etc
     _forEachWindow((wd) {
       // todo: if an error occurs during the render, display it in place of the window
@@ -671,6 +676,29 @@ class BeansWindowManager {
     });
     final font = FontCache.family().font();
     rw.DrawText(font.structPointer, 'DEEZ NUTSSSSSSS', 15, 15, 0, 0, 0, 255);
+  }*/
+
+  /// Render all windows.
+  /// 
+  /// Each window's x pos, y pos, width & height are updated to account for rounding issues during [addWindow].
+  void _render(RenderWindow rw) {
+    List<WindowData>? previousCollection;
+    for (var collection in _windows) {
+      WindowData? previousWindow;
+      for (var wd in collection) {
+        wd.x = isColumns ?
+          (previousCollection == null ? 0 : previousCollection.last.x2) :
+          (previousWindow == null ? 0 : previousWindow.x2);
+        wd.y = isColumns ?
+          (previousWindow == null ? 0 : previousWindow.y2) :
+          (previousCollection == null ? 0 : previousCollection.last.y2);
+        
+        wd.render(rw);
+        
+        previousWindow = wd;
+      }
+      previousCollection = collection;
+    }
   }
 
   /// update the focused window based on [_x] and [_y]
