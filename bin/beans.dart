@@ -1,6 +1,7 @@
 import 'dart_codegen.dart';
 import 'BeansWindowManager.dart';
 import 'dart:io';
+import 'FontCache.dart';
 
 /// Beans is responsible for initialization, error handling & cleanup at
 /// the highest level. It creates the [RenderWindow] and the [BeansWindowManager].
@@ -45,7 +46,9 @@ class Beans {
 }
 
 void main() {
+  FontCache.defaultFamily = 'res/DroidSansMono/DroidSansMono.ttf';
   final beans = Beans();
   beans.start();
   beans.destroy();
+  //FontCache.destroyAll();
 }

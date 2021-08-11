@@ -1,0 +1,7 @@
+.dart_tool
+.vscode
+build
+bin/dart_codegen.dart
+native/c_codegen.h
+Makefile
+.cloc_exclude_list.txt

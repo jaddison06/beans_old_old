@@ -1,8 +1,10 @@
 @LinkWithLib(SDL2)
+@LinkWithLib(SDL2_ttf)
 
 enum SDLInitCode {
     Success, // Success
     InitVideo_Fail, // SDL_InitVideo() failed
+    TTF_Init_Fail, // TTF_Init() failed
     CreateWindow_Fail, // SDL_CreateWindow() failed
     CreateRenderer_Fail // SDL_CreateRenderer() failed
 }
@@ -31,4 +33,6 @@ class RenderWindow {
     void DrawLine(int x1, int y1, int x2, int y2);
     void DrawRect(int x, int y, int w, int h);
     void FillRect(int x, int y, int w, int h);
+
+    void DrawText(void* font, char* text, int x, int y, int r, int g, int b, int a);
 }

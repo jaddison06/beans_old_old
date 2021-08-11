@@ -1,4 +1,5 @@
 import 'BeansWindow.dart';
+import 'FontCache.dart';
 import 'dart_codegen.dart';
 import 'BeansRenderer.dart';
 import 'dart:ffi';
@@ -60,6 +61,7 @@ enum BeansWindowLayoutMode {
 //   - Replace all uses of idx with the actual candidate - they're mutable
 //   - Create a class for a collection & calculate window positions dynamically - this gets rid of the rounding error
 //     where windows would be 1 or 2 pixels too small.
+//   - Decorations (needs text rendering)
 /// BeansWindowManager is responsible for:
 /// - Rendering [BeansWindow]s
 /// - Turning the raw [Event]s from SDL into a more usable format
@@ -502,7 +504,7 @@ class BeansWindowManager {
 
   /// Something has gone seriously wrong, but the RenderWindow is still alive, so display a graphical panic screen.
   void gpanic(Object exception, StackTrace trace) {
-    
+    print('An exception occured within Beans:\n$exception\nTrace:\n$trace');
   }
 
   /// Adds a [BeansWindow] to the layout
@@ -667,6 +669,8 @@ class BeansWindowManager {
         wd.height
       );
     });
+    final font = FontCache.family()[24];
+    rw.DrawText(font.structPointer, 'DEEZ NUTSSSSSSS', 15, 15, 0, 0, 0, 255);
   }
 
   /// update the focused window based on [_x] and [_y]

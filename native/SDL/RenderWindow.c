@@ -1,6 +1,8 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 
 #include "native/c_codegen.h"
+#include "BeansFont.h"
 
 // todo: render text, images
 
@@ -55,6 +57,10 @@ RenderWindow* InitRenderWindow(const char* title) {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         return LogSDLError(out, SDLInitCode_InitVideo_Fail);
     }
+
+    if (TTF_Init() != 0 ){
+        return LogSDLError(out, SDLInitCode_TTF_Init_Fail);
+    }
     
     out->win = SDL_CreateWindow(title, 0, 0, 0, 0, SDL_WINDOW_FULLSCREEN);
     if (out->win == NULL) {
@@ -75,6 +81,7 @@ RenderWindow* InitRenderWindow(const char* title) {
 void DestroyRenderWindow(RenderWindow* rw) {
     SDL_DestroyRenderer(rw->ren);
     SDL_DestroyWindow(rw->win);
+    TTF_Quit();
     SDL_Quit();
     free(rw);
 }
@@ -117,4 +124,38 @@ void FillRect(RenderWindow* rw, int x, int y, int w, int h) {
         h: h
     };
     SDL_RenderFillRect(rw->ren, &rect);
+}
+
+SDL_Texture* GetTextTexture(RenderWindow* rw, TTF_Font* font, char* text, int r, int g, int b, int a, int* width, int* height) {
+    SDL_Color col = {
+        r: r,
+        g: g,
+        b: b,
+        a: a
+    };
+
+    SDL_Surface* textSurface = TTF_RenderText_Solid(font, text, col);
+    SDL_Texture* textTexture = SDL_CreateTextureFromSurface(rw->ren, textSurface);
+    *width = textSurface->w;
+    *height = textSurface->h;
+    SDL_FreeSurface(textSurface);
+    return textTexture;
+}
+
+void RenderTexture(RenderWindow* rw, SDL_Texture* texture, int x, int y, int width, int height) {
+    SDL_Rect renderQuad = {
+        x: x,
+        y: y,
+        w: width,
+        h: height
+    };
+    
+    SDL_RenderCopy(rw->ren, texture, NULL, &renderQuad);
+}
+
+void DrawText(RenderWindow* rw, BeansFont* font, char* text, int x, int y, int r, int g, int b, int a) {
+    int width, height;
+    SDL_Texture* textTexture = GetTextTexture(rw, font->font, text, r, g, b, a, &width, &height);
+    RenderTexture(rw, textTexture, x, y, width, height);
+    SDL_DestroyTexture(textTexture);
 }

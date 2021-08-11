@@ -20,6 +20,7 @@ def codegen(files: list[ParsedGenFile]) -> str:
 typedef int BOOL;
 #define TRUE 1
 #define FALSE 0
+
 """
     for file in files:
         out += banner(file.name)

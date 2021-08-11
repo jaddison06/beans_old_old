@@ -6,9 +6,10 @@ def codegen() -> str:
         ".dart_tool",
         ".vscode",
         "build",
-        "Makefile",
         DART_OUTPUT_PATH,
-        C_OUTPUT_PATH
+        C_OUTPUT_PATH,
+        "Makefile",
+        CLOC_EXCLUDE_LIST_PATH
     ])
 
     return out

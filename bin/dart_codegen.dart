@@ -9,6 +9,7 @@ import 'package:ffi/ffi.dart';
 enum SDLInitCode {
     Success,
     InitVideo_Fail,
+    TTF_Init_Fail,
     CreateWindow_Fail,
     CreateRenderer_Fail,
 }
@@ -20,6 +21,7 @@ String SDLInitCodeToString(SDLInitCode val) {
     switch (val) {
         case SDLInitCode.Success: { return 'Success'; }
         case SDLInitCode.InitVideo_Fail: { return 'SDL_InitVideo() failed'; }
+        case SDLInitCode.TTF_Init_Fail: { return 'TTF_Init() failed'; }
         case SDLInitCode.CreateWindow_Fail: { return 'SDL_CreateWindow() failed'; }
         case SDLInitCode.CreateRenderer_Fail: { return 'SDL_CreateRenderer() failed'; }
     }
@@ -73,6 +75,10 @@ typedef _libRenderWindow_class_RenderWindow_method_DrawRect_sig = void Function(
 typedef _libRenderWindow_class_RenderWindow_method_FillRect_native_sig = Void Function(Pointer<Void>, Int32, Int32, Int32, Int32);
 typedef _libRenderWindow_class_RenderWindow_method_FillRect_sig = void Function(Pointer<Void>, int, int, int, int);
 
+// void DrawText(void* struct_ptr, void* font, char* text, int x, int y, int r, int g, int b, int a)
+typedef _libRenderWindow_class_RenderWindow_method_DrawText_native_sig = Void Function(Pointer<Void>, Pointer<Void>, Pointer<Utf8>, Int32, Int32, Int32, Int32, Int32, Int32);
+typedef _libRenderWindow_class_RenderWindow_method_DrawText_sig = void Function(Pointer<Void>, Pointer<Void>, Pointer<Utf8>, int, int, int, int, int, int);
+
 // ----------CLASS IMPLEMENTATIONS----------
 
 class RenderWindow {
@@ -95,6 +101,7 @@ class RenderWindow {
     late _libRenderWindow_class_RenderWindow_method_DrawLine_sig _DrawLine;
     late _libRenderWindow_class_RenderWindow_method_DrawRect_sig _DrawRect;
     late _libRenderWindow_class_RenderWindow_method_FillRect_sig _FillRect;
+    late _libRenderWindow_class_RenderWindow_method_DrawText_sig _DrawText;
 
     RenderWindow(String title) {
         final lib = DynamicLibrary.open('build/native/SDL/libRenderWindow.so');
@@ -110,6 +117,7 @@ class RenderWindow {
         _DrawLine = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DrawLine_native_sig, _libRenderWindow_class_RenderWindow_method_DrawLine_sig>('DrawLine');
         _DrawRect = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DrawRect_native_sig, _libRenderWindow_class_RenderWindow_method_DrawRect_sig>('DrawRect');
         _FillRect = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_FillRect_native_sig, _libRenderWindow_class_RenderWindow_method_FillRect_sig>('FillRect');
+        _DrawText = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DrawText_native_sig, _libRenderWindow_class_RenderWindow_method_DrawText_sig>('DrawText');
 
         structPointer = _InitRenderWindow(title.toNativeUtf8());
     }
@@ -167,6 +175,82 @@ class RenderWindow {
     void FillRect(int x, int y, int w, int h) {
         _validatePointer('FillRect');
         return _FillRect(structPointer, x, y, w, h);
+    }
+
+    void DrawText(Pointer<Void> font, String text, int x, int y, int r, int g, int b, int a) {
+        _validatePointer('DrawText');
+        return _DrawText(structPointer, font, text.toNativeUtf8(), x, y, r, g, b, a);
+    }
+
+}
+
+// ----------FILE: NATIVE/SDL/FONT.GEN----------
+
+// ----------FUNC SIG TYPEDEFS FOR CLASSES----------
+
+// ----------FONT----------
+
+// void* InitFont(char* name, int size)
+typedef _libFont_class_Font_method_InitFont_native_sig = Pointer<Void> Function(Pointer<Utf8>, Int32);
+typedef _libFont_class_Font_method_InitFont_sig = Pointer<Void> Function(Pointer<Utf8>, int);
+
+// void DestroyFont(void* struct_ptr)
+typedef _libFont_class_Font_method_DestroyFont_native_sig = Void Function(Pointer<Void>);
+typedef _libFont_class_Font_method_DestroyFont_sig = void Function(Pointer<Void>);
+
+// char* BFGetName(void* struct_ptr)
+typedef _libFont_class_Font_method_BFGetName_native_sig = Pointer<Utf8> Function(Pointer<Void>);
+typedef _libFont_class_Font_method_BFGetName_sig = Pointer<Utf8> Function(Pointer<Void>);
+
+// int BFGetSize(void* struct_ptr)
+typedef _libFont_class_Font_method_BFGetSize_native_sig = Int32 Function(Pointer<Void>);
+typedef _libFont_class_Font_method_BFGetSize_sig = int Function(Pointer<Void>);
+
+// ----------CLASS IMPLEMENTATIONS----------
+
+class Font {
+    Pointer<Void> structPointer = Pointer.fromAddress(0);
+
+    void _validatePointer(String methodName) {
+        if (structPointer.address == 0) {
+            throw Exception('Font.$methodName was called, but structPointer is a nullptr.');
+        }
+    }
+
+    late _libFont_class_Font_method_InitFont_sig _InitFont;
+    late _libFont_class_Font_method_DestroyFont_sig _DestroyFont;
+    late _libFont_class_Font_method_BFGetName_sig _BFGetName;
+    late _libFont_class_Font_method_BFGetSize_sig _BFGetSize;
+
+    Font(String name, int size) {
+        final lib = DynamicLibrary.open('build/native/SDL/libFont.so');
+
+        _InitFont = lib.lookupFunction<_libFont_class_Font_method_InitFont_native_sig, _libFont_class_Font_method_InitFont_sig>('InitFont');
+        _DestroyFont = lib.lookupFunction<_libFont_class_Font_method_DestroyFont_native_sig, _libFont_class_Font_method_DestroyFont_sig>('DestroyFont');
+        _BFGetName = lib.lookupFunction<_libFont_class_Font_method_BFGetName_native_sig, _libFont_class_Font_method_BFGetName_sig>('BFGetName');
+        _BFGetSize = lib.lookupFunction<_libFont_class_Font_method_BFGetSize_native_sig, _libFont_class_Font_method_BFGetSize_sig>('BFGetSize');
+
+        structPointer = _InitFont(name.toNativeUtf8(), size);
+    }
+
+    void Destroy() {
+        _validatePointer('DestroyFont');
+        final out = _DestroyFont(structPointer);
+
+        // this method invalidates the pointer, probably by freeing memory
+        structPointer = Pointer.fromAddress(0);
+
+        return out;
+    }
+
+    Pointer<Utf8> get name {
+        _validatePointer('BFGetName');
+        return _BFGetName(structPointer);
+    }
+
+    int get size {
+        _validatePointer('BFGetSize');
+        return _BFGetSize(structPointer);
     }
 
 }

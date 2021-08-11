@@ -5,14 +5,18 @@
 typedef int BOOL;
 #define TRUE 1
 #define FALSE 0
+
 // ----------NATIVE/SDL/RENDERWINDOW.GEN----------
 
 typedef enum {
     SDLInitCode_Success = 0,
     SDLInitCode_InitVideo_Fail = 1,
-    SDLInitCode_CreateWindow_Fail = 2,
-    SDLInitCode_CreateRenderer_Fail = 3,
+    SDLInitCode_TTF_Init_Fail = 2,
+    SDLInitCode_CreateWindow_Fail = 3,
+    SDLInitCode_CreateRenderer_Fail = 4,
 } SDLInitCode;
+
+// ----------NATIVE/SDL/FONT.GEN----------
 
 // ----------NATIVE/SDL/EVENT.GEN----------
 

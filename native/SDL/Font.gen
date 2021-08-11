@@ -1,0 +1,15 @@
+@LinkWithLib(SDL2_ttf)
+
+class Font {
+    @Initializer()
+    void* InitFont(char* name, int size);
+
+    @Invalidates()
+    @Show(Destroy)
+    void DestroyFont();
+
+    @Getter(name)
+    char* BFGetName();
+    @Getter(size)
+    int BFGetSize();
+}
