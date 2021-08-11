@@ -34,5 +34,5 @@ class RenderWindow {
     void DrawRect(int x, int y, int w, int h);
     void FillRect(int x, int y, int w, int h);
 
-    void DrawText(void* font, char* text, int x, int y, int r, int g, int b, int a);
+    void DrawText(BeansFont* font, char* text, int x, int y, int r, int g, int b, int a);
 }

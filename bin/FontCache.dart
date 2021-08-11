@@ -3,7 +3,7 @@ import 'dart_codegen.dart';
 /// FontCache represents a whole font family, and provides the operator `[]` to get a specific font size from that family.
 /// Use the static method [family] to get an instance, and call [destroyAll] at program end.
 class FontCache {
-  final _fonts = <int, Font>{};
+  final _fonts = <int, BeansFont>{};
   final String _fontName;
 
   /// private constructor
@@ -17,17 +17,17 @@ class FontCache {
     }
   }
 
-  /// Get the [Font] with size [size]. Similarly to [family], if [size] is null, then [defaultSize] is used. If that's
+  /// Get the [BeansFont] with size [size]. Similarly to [family], if [size] is null, then [defaultSize] is used. If that's
   /// also null, a [StateError] is thrown.
   /// 
-  /// Do **not** call [Font.Destroy] on the returned [Font].
-  Font font([int? size]) {
+  /// Do **not** call [BeansFont.Destroy] on the returned [BeansFont].
+  BeansFont font([int? size]) {
     if (size == null) {
       if (defaultSize == null) throw StateError('FontCache.font was called with a null size and a null defaultSize.');
       size = defaultSize!;
     }
     if (!_fonts.containsKey(size)) {
-      _fonts[size] = Font(_fontName, size);
+      _fonts[size] = BeansFont(_fontName, size);
     }
     return _fonts[size]!;
   }

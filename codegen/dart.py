@@ -31,6 +31,10 @@ def get_typename(type_: CodegenType, typename_dict: dict[str, str]) -> str:
         codegen_typename = type_.typename
     elif lookup.is_enum(type_.typename):
         codegen_typename = "int"
+    elif lookup.is_class(type_.typename):
+        if not type_.is_pointer:
+            raise ValueError("Cannot pass class by value - please pass a pointer instead.")
+        return "Pointer<Void>"
     else:
         raise ValueError(f"Data structures like {type_.typename} aren't currently supported.")
     
@@ -97,12 +101,14 @@ def param_list(func: CodegenFunction) -> str:
         param_type = func.params[param_name]
         dart_type = get_typename(param_type, DART)
 
-        # THIS IS WHERE STUFF FOR ENUMS, STRUCTS, ETC WILL GO !!!
+
         if dart_type == "Pointer<Utf8>":
             dart_type = "String"
         elif param_type.typename == "bool":
             dart_type = "bool"
         elif lookup.is_enum(param_type.typename):
+            dart_type = param_type.typename
+        elif lookup.is_class(param_type.typename):
             dart_type = param_type.typename
         
         out += f"{dart_type} {param_name}"
@@ -157,6 +163,8 @@ def func_params(func: CodegenFunction) -> str:
             out += f"{param_name} ? 1 : 0"
         elif lookup.is_enum(param_type.typename):
             out += f"{param_type.typename}ToInt({param_name})"
+        elif lookup.is_class(param_type.typename):
+            out += f"{param_name}.structPointer"
         else:
             out += param_name
         

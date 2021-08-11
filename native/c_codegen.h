@@ -16,7 +16,7 @@ typedef enum {
     SDLInitCode_CreateRenderer_Fail = 4,
 } SDLInitCode;
 
-// ----------NATIVE/SDL/FONT.GEN----------
+// ----------NATIVE/SDL/BEANSFONT.GEN----------
 
 // ----------NATIVE/SDL/EVENT.GEN----------
 

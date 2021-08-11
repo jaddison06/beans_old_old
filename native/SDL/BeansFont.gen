@@ -1,6 +1,6 @@
 @LinkWithLib(SDL2_ttf)
 
-class Font {
+class BeansFont {
     @Initializer()
     void* InitFont(char* name, int size);
 

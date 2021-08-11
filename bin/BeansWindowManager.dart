@@ -15,45 +15,102 @@ extension on Iterable<int> {
 
 /// WindowData represents metadata about a [BeansWindow], needed by the [BeansWindowManager].
 class WindowData {
-  int x;
-  int y;
   int width;
   int height;
   bool isFocused;
   bool isFloating;
   BeansWindow window;
 
-  /// Tests if the event at (x, y) occured inside this window.
+  /// Tests if the event at ([hitX], [hitY]) occured inside this window.
   /// [hitTest] is *inclusive* on the left/top and *exclusive* on the right/bottom.
-  bool hitTest(int x, int y) {
+  bool hitTest(int x, int y, int hitX, int hitY) {
     return (
-      x >= this.x &&
-      y >= this.y &&
-      x < this.x + width &&
-      y < this.y + height
+      hitX >= x &&
+      hitY >= y &&
+      hitX < x2(x) &&
+      hitY < y2(y)
     );
   }
 
   /// Render [window] using [x], [y], [width] and [height].
-  void render(RenderWindow rw) {
+  void render(RenderWindow rw, int x, int y) {
     window.render(rw, x, y, width, height);
   }
 
-  int get x2 => x + width;
-  int get y2 => y + height;
-
-  @override
-  String toString() => 'WindowData: ${window.title} @ ($x, $y), (${width}x$height)';
+  int x2(int x) => x + width;
+  int y2(int y) => y + height;
 
   WindowData({
-    required this.x,
-    required this.y,
     required this.width,
     required this.height,
     required this.isFocused,
     required this.isFloating,
     required this.window
   });
+}
+
+// todo: instead of giving the [WindowData] width & height, give the Collection a crossSize and a list of mainSizes,
+// and only calculate the width & height at render time. That way, to resize the collection, you only need to change
+// one variable. Also, you can make windows private, and have a
+// single method Collection.addWindow(BeansWindow win, int mainSize, bool isFocused)
+//
+/// A row or column of windows
+class Collection {
+  final windows = <WindowData>[];
+
+  bool get isColumns => BeansWindowManager.layoutMode == BeansWindowLayoutMode.Columns;
+
+  int x(int mainPos, int crossPos) => isColumns ? crossPos : mainPos;
+  int y(int mainPos, int crossPos) => isColumns ? mainPos : crossPos;
+
+  void setCrossSize(int newCrossSize) {
+    for (var wd in windows) {
+      if (isColumns) {
+        wd.width = newCrossSize;
+      } else {
+        wd.height = newCrossSize;
+      }
+    }
+  }
+
+  /// quits if [cb] returns `true`
+  void _forEachWithMainPos(bool? Function(WindowData, int) cb) {
+    var mainPos = 0;
+    for (var wd in windows) {
+      if (cb(wd, mainPos) == true) return;
+
+      mainPos += isColumns ? wd.height : wd.width;
+    }
+  }
+
+  void render(RenderWindow rw, int crossPos) {
+    _forEachWithMainPos((wd, mainPos) {
+      wd.render(
+        rw,
+        x(mainPos, crossPos),
+        y(mainPos, crossPos)
+      );
+    });
+  }
+
+  WindowData? hitTest(int hitX, int hitY, int crossPos) {
+    WindowData? out;
+    _forEachWithMainPos((wd, mainPos) {
+      if (
+        wd.hitTest(
+          x(mainPos, crossPos),
+          y(mainPos, crossPos),
+          hitX,
+          hitY
+        )
+      ) {
+        out = wd;
+        return true;
+      }
+    });
+    return out;
+  }
+
 }
 
 /// How new windows, snapping, & layout should align
@@ -80,25 +137,32 @@ class BeansWindowManager {
   final Pointer<Int32> _x;
   final Pointer<Int32> _y;
 
-  final List<List<WindowData>> _windows = [];
+  final List<Collection> _windows = [];
   
-  int get _windowCount => _windows.map((collection) => collection.length).sum();
+  int get _windowCount => _windows.map((collection) => collection.windows.length).sum();
 
   /// Iterate over each window in _windows. [cb] should return true as a kind of break statement - this facilitates
   /// breaking out of both loops at the same time.
   void _forEachWindow(bool? Function(WindowData) cb) {
     for (var collection in _windows) {
-      for (var window in collection) {
-        if (cb(window) == true) {
-          return;
-        }
+      for (var window in collection.windows) {
+        if (cb(window) == true) return;
       }
+    }
+  }
+
+  void _forEachCollectionWithCrossPos(bool? Function(Collection, int) cb) {
+    var crossPos = 0;
+    for (var collection in _windows) {
+      if (cb(collection, crossPos) == true) return;
+
+      crossPos += crossSize(collection.windows.last);
     }
   }
 
   final List<BeansWindow> _testWindows = [];
 
-  final layoutMode = BeansWindowLayoutMode.Rows;
+  static BeansWindowLayoutMode layoutMode = BeansWindowLayoutMode.Rows;
 
   BeansWindowManager(this._rw) :
     _x = malloc<Int32>(),
@@ -173,21 +237,21 @@ class BeansWindowManager {
 
 
   /// for a column: if every window in the column was at `minHeight`, how tall would the whole thing be?
-  int minPossibleMainSize(List<WindowData> collection) {
-    return collection.map((wd) => minMainSize(wd.window)).sum().toInt();
+  int minPossibleMainSize(Collection collection) {
+    return collection.windows.map((wd) => minMainSize(wd.window)).sum().toInt();
   }
 
   /// for a column: finds the window with the largest `minWidth`.
-  int minPossibleCrossSize(List<WindowData> collection) {
-    return minCrossSize(collection.reduce((value, element) => minCrossSize(value.window) > minCrossSize(element.window) ? value : element).window);
+  int minPossibleCrossSize(Collection collection) {
+    return minCrossSize(collection.windows.reduce((value, element) => minCrossSize(value.window) > minCrossSize(element.window) ? value : element).window);
   }
 
   /// get the current total main axis size of the collection
-  int totalMainAxisSize(/*List<WindowData> collection*/) {
+  int totalMainAxisSize(/*Collection collection*/) {
     // 2 ways of doing it
     _rw.GetSize(_x, _y);
     return isColumns ? _y.value : _x.value;
-    //return collection.map((wd) => mainSize(wd)).sum().toInt();
+    //return collection.windows.map((wd) => mainSize(wd)).sum().toInt();
   }
 
   /// get the total cross axis size of the [RenderWindow]
@@ -196,7 +260,7 @@ class BeansWindowManager {
     return isColumns ? _x.value : _y.value;
   }
 
-
+/*
   /// for a column, the X position of the window's left edge.
   int alignedStart(WindowData wd) {
     return isColumns ? wd.x : wd.y;
@@ -218,7 +282,7 @@ class BeansWindowManager {
   int offsetEnd(WindowData wd) {
     return offsetStart(wd) + mainSize(wd);
   }
-
+*/
 
   /// set the main axis size of a window
   void setMainSize(WindowData wd, int newSize) {
@@ -237,7 +301,7 @@ class BeansWindowManager {
       wd.height = newSize;
     }
   }
-
+/*
   /// set the position of a window on the main axis
   void setMainPos(WindowData wd, int newPos) {
     if (isColumns) {
@@ -255,30 +319,14 @@ class BeansWindowManager {
       wd.y = newPos;
     }
   }
-
-
-  /// change the cross axis size of a whole collection
-  void resizeCollection(int collectionIdx, int newCrossSize) {
-    for (var wd in _windows[collectionIdx]) {
-      setCrossSize(wd, newCrossSize);
-    }
-  }
-
-  /// change the cross axis position of a whole collection
-  void setCollectionPos(int collectionIdx, int newCrossPos) {
-    for (var wd in _windows[collectionIdx]) {
-      setCrossPos(wd, newCrossPos);
-    }
-  }
+*/
 
   /// Calculates x, y, width, height and initializes the [WindowData]. Assumes that resizing of other windows
   /// has already been done, and that it is **not** a floating window.
-  void addWindowToCollection(BeansWindow win, int collectionIdx, {required int mainPos, required int crossPos, required int mainSize_, required int crossSize_, bool focus = true}) {
+  void addWindowToCollection(BeansWindow win, int collectionIdx, {required int mainSize_, required int crossSize_, bool focus = true}) {
     final collection = _windows[collectionIdx];
-    collection.add(
+    collection.windows.add(
       WindowData(
-        x: isColumns ? crossPos : mainPos,
-        y: isColumns ? mainPos : crossPos,
         width: isColumns ? crossSize_ : mainSize_,
         height: isColumns ? mainSize_ : crossSize_,
         window: win,
@@ -313,28 +361,35 @@ class BeansWindowManager {
     final totalCrossSize = totalCrossAxisSize();
     final collection = _windows[collectionIdx];
     // previous crossSize of the collection
-    final oldCrossSize = collection.isEmpty ? 0 : crossSize(collection.last);
+    final oldCrossSize = collection.windows.isEmpty ? 0 : crossSize(collection.windows.last);
     // ratio to reduce/increase the size of all other collections by.
     //! this must be a double
     final ratio = (totalCrossSize - (newCrossSize - oldCrossSize)) / totalCrossSize;
 
-    List<WindowData>? previousCollection;
+    Collection? previousCollection;
     for (var i=0; i<_windows.length; i++) {
       final modifyCollection = _windows[i];
       if (i == collectionIdx) {
         // resize the selected collection to newCrossSize
-        resizeCollection(i, newCrossSize);
+        //resizeCollection(i, newCrossSize);
+        _windows[i].setCrossSize(newCrossSize);
       } else {
         // resize the collection to either its current size * the ratio, or its mininum size, whichever is bigger.
-        resizeCollection(i,
+        _windows[i].setCrossSize(
+          max(
+            (crossSize(modifyCollection.windows.last) * ratio).toInt(),
+            minPossibleCrossSize(modifyCollection)
+          )
+        );
+        /*resizeCollection(i,
           max(
             (crossSize(modifyCollection.last) * ratio).toInt(),
             minPossibleCrossSize(modifyCollection)
           )
-        );
+        );*/
       }
       // reposition the collection
-      setCollectionPos(i, previousCollection == null ? 0 : alignedEnd(previousCollection.last));
+      //setCollectionPos(i, previousCollection == null ? 0 : alignedEnd(previousCollection.last));
       previousCollection = modifyCollection;
     }
 
@@ -344,7 +399,7 @@ class BeansWindowManager {
   /// window. Assumes that doing so won't overflow the layout.
   void resizeIfNeeded(int collectionIdx, BeansWindow win) {
     final collection = _windows[collectionIdx];
-    if (minCrossSize(win) > crossSize(collection.last)) {
+    if (minCrossSize(win) > crossSize(collection.windows.last)) {
       resizeCollections(collectionIdx, minCrossSize(win));
     }
   }
@@ -358,12 +413,12 @@ class BeansWindowManager {
   int? bestState1Or2Candidate(BeansWindow win, int a, int b) {
     final candA = _windows[a];
     final candB = _windows[b];
-    final aNeedsResize = minCrossSize(win) > crossSize(candA.last);
-    final bNeedsResize = minCrossSize(win) > crossSize(candB.last);
+    final aNeedsResize = minCrossSize(win) > crossSize(candA.windows.last);
+    final bNeedsResize = minCrossSize(win) > crossSize(candB.windows.last);
     if (aNeedsResize && bNeedsResize) {
       // smallest resize wins
-      final aResize = crossSize(candA.last) - minCrossSize(win);
-      final bResize = crossSize(candB.last) - minCrossSize(win);
+      final aResize = crossSize(candA.windows.last) - minCrossSize(win);
+      final bResize = crossSize(candB.windows.last) - minCrossSize(win);
       if (aResize > bResize) {
         return a;
       } else if (bResize > aResize) {
@@ -393,8 +448,8 @@ class BeansWindowManager {
 
     final candA = _windows[a];
     final candB = _windows[b];
-    final aFreeSpace = mainSize(candA.last) - minMainSize(candA.last.window);
-    final bFreeSpace = mainSize(candB.last) - minMainSize(candB.last.window);
+    final aFreeSpace = mainSize(candA.windows.last) - minMainSize(candA.windows.last.window);
+    final bFreeSpace = mainSize(candB.windows.last) - minMainSize(candB.windows.last.window);
 
     if (aFreeSpace > bFreeSpace) {
       return a;
@@ -429,17 +484,17 @@ class BeansWindowManager {
   void addState1(BeansWindow win, int collectionIdx) {
     final collection = _windows[collectionIdx];
     // Gap between the two windows if they were both at their minMainSize
-    final gap = mainSize(collection.last) - (minMainSize(collection.last.window) + minMainSize(win));
+    final gap = mainSize(collection.windows.last) - (minMainSize(collection.windows.last.window) + minMainSize(win));
     /// resize the current final window
-    setMainSize(collection.last, minMainSize(collection.last.window) + (gap ~/ 2));
+    setMainSize(collection.windows.last, minMainSize(collection.windows.last.window) + (gap ~/ 2));
     resizeIfNeeded(collectionIdx, win);
     addWindowToCollection(
       win,
       collectionIdx,
-      mainPos: offsetEnd(collection.last),
-      crossPos: alignedStart(collection.last),
+      /*mainPos: offsetEnd(collection.last),
+      crossPos: alignedStart(collection.last),*/
       mainSize_: minMainSize(win) + (gap ~/ 2),
-      crossSize_: crossSize(collection.last)
+      crossSize_: crossSize(collection.windows.last)
     );
   }
 
@@ -451,24 +506,24 @@ class BeansWindowManager {
     //! must be a double
     final ratio = (currentMainSize - minMainSize(win)) / currentMainSize;
     WindowData? previousWindow;
-    for (var modifyWindow in collection) {
+    for (var modifyWindow in collection.windows) {
       setMainSize(modifyWindow,
         max(
           (mainSize(modifyWindow) * ratio).toInt(),
           minMainSize(modifyWindow.window)
         )
       );
-      setMainPos(modifyWindow, previousWindow == null ? 0 : offsetEnd(previousWindow));
+      //setMainPos(modifyWindow, previousWindow == null ? 0 : offsetEnd(previousWindow));
       previousWindow = modifyWindow;
     }
     resizeIfNeeded(collectionIdx, win);
     addWindowToCollection(
       win,
       collectionIdx,
-      mainPos: offsetEnd(collection.last),
-      crossPos: alignedStart(collection.last),
+      /*mainPos: offsetEnd(collection.last),
+      crossPos: alignedStart(collection.last),*/
       mainSize_: minMainSize(win),
-      crossSize_: crossSize(collection.last)
+      crossSize_: crossSize(collection.windows.last)
     );
   }
 
@@ -484,14 +539,14 @@ class BeansWindowManager {
 
     final previousCollection = _windows.isEmpty ? null : _windows.last;
 
-    _windows.add(<WindowData>[]);
+    _windows.add(Collection());
 
     resizeCollections(_windows.length - 1, crossSize_);
     addWindowToCollection(
       win,
       _windows.length - 1,
-      mainPos: 0,
-      crossPos: previousCollection == null ? 0 : alignedEnd(previousCollection.last),
+      /*mainPos: 0,
+      crossPos: previousCollection == null ? 0 : alignedEnd(previousCollection.last),*/
       mainSize_: totalMainSize,
       crossSize_: previousCollection == null ? totalCrossSize : crossSize_
     );
@@ -546,15 +601,15 @@ class BeansWindowManager {
       if (
         // it will be able to fit in at the end by resizing ONLY the final window
         (
-          mainSize(candidate.last) >= (
-            minMainSize(candidate.last.window) +
+          mainSize(candidate.windows.last) >= (
+            minMainSize(candidate.windows.last.window) +
             minMainSize(win)
           )
         ) &&
         (
           // EITHER it doesn't need a resize
           (
-            minCrossSize(win) <= crossSize(candidate.last)
+            minCrossSize(win) <= crossSize(candidate.windows.last)
           ) ||
           // OR it does need a resize, but the resize wouldn't cause a layout overflow.
           (
@@ -593,7 +648,7 @@ class BeansWindowManager {
         // Same as state 1
         (
           (
-            minCrossSize(win) <= crossSize(candidate.last)
+            minCrossSize(win) <= crossSize(candidate.windows.last)
           ) ||
           (
             !wouldOverflow(i, minCrossSize(win))
@@ -682,27 +737,15 @@ class BeansWindowManager {
   /// 
   /// Each window's x pos, y pos, width & height are updated to account for rounding issues during [addWindow].
   void _render(RenderWindow rw) {
-    List<WindowData>? previousCollection;
-    for (var collection in _windows) {
-      WindowData? previousWindow;
-      for (var wd in collection) {
-        wd.x = isColumns ?
-          (previousCollection == null ? 0 : previousCollection.last.x2) :
-          (previousWindow == null ? 0 : previousWindow.x2);
-        wd.y = isColumns ?
-          (previousWindow == null ? 0 : previousWindow.y2) :
-          (previousCollection == null ? 0 : previousCollection.last.y2);
-        
-        wd.render(rw);
-        
-        previousWindow = wd;
-      }
-      previousCollection = collection;
-    }
+    _forEachCollectionWithCrossPos((collection, crossPos) {
+      collection.render(rw, crossPos);
+    });
+    final font = FontCache.family().font();
+    rw.DrawText(font, 'DEEZ NUTSSSSSSS', 15, 15, 0, 0, 0, 255);
   }
 
   /// update the focused window based on [_x] and [_y]
-  void _setFocusedWindow() {
+  /*void _setFocusedWindow() {
     if (!(_focusedWindow?.hitTest(_x.value, _y.value) ?? false)) {
       _focusedWindow?.isFocused = false;
       _forEachWindow((wd) {
@@ -712,6 +755,15 @@ class BeansWindowManager {
         }
       });
     }
+  }*/
+  void _setFocusedWindow() {
+    _forEachCollectionWithCrossPos((collection, crossPos) {
+      final wd = collection.hitTest(_x.value, _y.value, crossPos);
+      if (wd != null) {
+        wd.isFocused = true;
+        return true;
+      }
+    });
   }
 
   void _event(Event event) {

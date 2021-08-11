@@ -75,7 +75,7 @@ typedef _libRenderWindow_class_RenderWindow_method_DrawRect_sig = void Function(
 typedef _libRenderWindow_class_RenderWindow_method_FillRect_native_sig = Void Function(Pointer<Void>, Int32, Int32, Int32, Int32);
 typedef _libRenderWindow_class_RenderWindow_method_FillRect_sig = void Function(Pointer<Void>, int, int, int, int);
 
-// void DrawText(void* struct_ptr, void* font, char* text, int x, int y, int r, int g, int b, int a)
+// void DrawText(void* struct_ptr, BeansFont* font, char* text, int x, int y, int r, int g, int b, int a)
 typedef _libRenderWindow_class_RenderWindow_method_DrawText_native_sig = Void Function(Pointer<Void>, Pointer<Void>, Pointer<Utf8>, Int32, Int32, Int32, Int32, Int32, Int32);
 typedef _libRenderWindow_class_RenderWindow_method_DrawText_sig = void Function(Pointer<Void>, Pointer<Void>, Pointer<Utf8>, int, int, int, int, int, int);
 
@@ -177,58 +177,58 @@ class RenderWindow {
         return _FillRect(structPointer, x, y, w, h);
     }
 
-    void DrawText(Pointer<Void> font, String text, int x, int y, int r, int g, int b, int a) {
+    void DrawText(BeansFont font, String text, int x, int y, int r, int g, int b, int a) {
         _validatePointer('DrawText');
-        return _DrawText(structPointer, font, text.toNativeUtf8(), x, y, r, g, b, a);
+        return _DrawText(structPointer, font.structPointer, text.toNativeUtf8(), x, y, r, g, b, a);
     }
 
 }
 
-// ----------FILE: NATIVE/SDL/FONT.GEN----------
+// ----------FILE: NATIVE/SDL/BEANSFONT.GEN----------
 
 // ----------FUNC SIG TYPEDEFS FOR CLASSES----------
 
-// ----------FONT----------
+// ----------BEANSFONT----------
 
 // void* InitFont(char* name, int size)
-typedef _libFont_class_Font_method_InitFont_native_sig = Pointer<Void> Function(Pointer<Utf8>, Int32);
-typedef _libFont_class_Font_method_InitFont_sig = Pointer<Void> Function(Pointer<Utf8>, int);
+typedef _libBeansFont_class_BeansFont_method_InitFont_native_sig = Pointer<Void> Function(Pointer<Utf8>, Int32);
+typedef _libBeansFont_class_BeansFont_method_InitFont_sig = Pointer<Void> Function(Pointer<Utf8>, int);
 
 // void DestroyFont(void* struct_ptr)
-typedef _libFont_class_Font_method_DestroyFont_native_sig = Void Function(Pointer<Void>);
-typedef _libFont_class_Font_method_DestroyFont_sig = void Function(Pointer<Void>);
+typedef _libBeansFont_class_BeansFont_method_DestroyFont_native_sig = Void Function(Pointer<Void>);
+typedef _libBeansFont_class_BeansFont_method_DestroyFont_sig = void Function(Pointer<Void>);
 
 // char* BFGetName(void* struct_ptr)
-typedef _libFont_class_Font_method_BFGetName_native_sig = Pointer<Utf8> Function(Pointer<Void>);
-typedef _libFont_class_Font_method_BFGetName_sig = Pointer<Utf8> Function(Pointer<Void>);
+typedef _libBeansFont_class_BeansFont_method_BFGetName_native_sig = Pointer<Utf8> Function(Pointer<Void>);
+typedef _libBeansFont_class_BeansFont_method_BFGetName_sig = Pointer<Utf8> Function(Pointer<Void>);
 
 // int BFGetSize(void* struct_ptr)
-typedef _libFont_class_Font_method_BFGetSize_native_sig = Int32 Function(Pointer<Void>);
-typedef _libFont_class_Font_method_BFGetSize_sig = int Function(Pointer<Void>);
+typedef _libBeansFont_class_BeansFont_method_BFGetSize_native_sig = Int32 Function(Pointer<Void>);
+typedef _libBeansFont_class_BeansFont_method_BFGetSize_sig = int Function(Pointer<Void>);
 
 // ----------CLASS IMPLEMENTATIONS----------
 
-class Font {
+class BeansFont {
     Pointer<Void> structPointer = Pointer.fromAddress(0);
 
     void _validatePointer(String methodName) {
         if (structPointer.address == 0) {
-            throw Exception('Font.$methodName was called, but structPointer is a nullptr.');
+            throw Exception('BeansFont.$methodName was called, but structPointer is a nullptr.');
         }
     }
 
-    late _libFont_class_Font_method_InitFont_sig _InitFont;
-    late _libFont_class_Font_method_DestroyFont_sig _DestroyFont;
-    late _libFont_class_Font_method_BFGetName_sig _BFGetName;
-    late _libFont_class_Font_method_BFGetSize_sig _BFGetSize;
+    late _libBeansFont_class_BeansFont_method_InitFont_sig _InitFont;
+    late _libBeansFont_class_BeansFont_method_DestroyFont_sig _DestroyFont;
+    late _libBeansFont_class_BeansFont_method_BFGetName_sig _BFGetName;
+    late _libBeansFont_class_BeansFont_method_BFGetSize_sig _BFGetSize;
 
-    Font(String name, int size) {
-        final lib = DynamicLibrary.open('build/native/SDL/libFont.so');
+    BeansFont(String name, int size) {
+        final lib = DynamicLibrary.open('build/native/SDL/libBeansFont.so');
 
-        _InitFont = lib.lookupFunction<_libFont_class_Font_method_InitFont_native_sig, _libFont_class_Font_method_InitFont_sig>('InitFont');
-        _DestroyFont = lib.lookupFunction<_libFont_class_Font_method_DestroyFont_native_sig, _libFont_class_Font_method_DestroyFont_sig>('DestroyFont');
-        _BFGetName = lib.lookupFunction<_libFont_class_Font_method_BFGetName_native_sig, _libFont_class_Font_method_BFGetName_sig>('BFGetName');
-        _BFGetSize = lib.lookupFunction<_libFont_class_Font_method_BFGetSize_native_sig, _libFont_class_Font_method_BFGetSize_sig>('BFGetSize');
+        _InitFont = lib.lookupFunction<_libBeansFont_class_BeansFont_method_InitFont_native_sig, _libBeansFont_class_BeansFont_method_InitFont_sig>('InitFont');
+        _DestroyFont = lib.lookupFunction<_libBeansFont_class_BeansFont_method_DestroyFont_native_sig, _libBeansFont_class_BeansFont_method_DestroyFont_sig>('DestroyFont');
+        _BFGetName = lib.lookupFunction<_libBeansFont_class_BeansFont_method_BFGetName_native_sig, _libBeansFont_class_BeansFont_method_BFGetName_sig>('BFGetName');
+        _BFGetSize = lib.lookupFunction<_libBeansFont_class_BeansFont_method_BFGetSize_native_sig, _libBeansFont_class_BeansFont_method_BFGetSize_sig>('BFGetSize');
 
         structPointer = _InitFont(name.toNativeUtf8(), size);
     }
