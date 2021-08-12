@@ -361,15 +361,13 @@ class BeansWindowManager extends XYPointer {
   /// - If only one window needs a resize, then the other one wins.
   /// - If both windows need a resize, the winner is the one with the smallest resize, or inconclusive if they are equal.
   /// - If neither needs a resize, the result is inconclusive.
-  int? bestState1Or2Candidate(BeansWindow win, int a, int b) {
-    final candA = _windows[a];
-    final candB = _windows[b];
-    final aNeedsResize = minCrossSize(win) > crossSize(candA.windows.last);
-    final bNeedsResize = minCrossSize(win) > crossSize(candB.windows.last);
+  Collection? bestState1Or2Candidate(BeansWindow win, Collection a, Collection b) {
+    final aNeedsResize = minCrossSize(win) > crossSize(a.windows.last);
+    final bNeedsResize = minCrossSize(win) > crossSize(b.windows.last);
     if (aNeedsResize && bNeedsResize) {
       // smallest resize wins
-      final aResize = crossSize(candA.windows.last) - minCrossSize(win);
-      final bResize = crossSize(candB.windows.last) - minCrossSize(win);
+      final aResize = crossSize(a.windows.last) - minCrossSize(win);
+      final bResize = crossSize(b.windows.last) - minCrossSize(win);
       if (aResize > bResize) {
         return a;
       } else if (bResize > aResize) {
@@ -391,16 +389,14 @@ class BeansWindowManager extends XYPointer {
   /// Get the best candidate collection for State 1.
   /// 
   /// [bestState1Or2Candidate] is used initially. If this is inconclusive, the most spacious collection is used.
-  int bestState1Candidate(BeansWindow win, int a, int b) {
+  Collection bestState1Candidate(BeansWindow win, Collection a, Collection b) {
     final resizeBest = bestState1Or2Candidate(win, a, b);
     if (resizeBest != null) {
       return resizeBest;
     }
 
-    final candA = _windows[a];
-    final candB = _windows[b];
-    final aFreeSpace = mainSize(candA.windows.last) - minMainSize(candA.windows.last.window);
-    final bFreeSpace = mainSize(candB.windows.last) - minMainSize(candB.windows.last.window);
+    final aFreeSpace = mainSize(a.windows.last) - minMainSize(a.windows.last.window);
+    final bFreeSpace = mainSize(b.windows.last) - minMainSize(b.windows.last.window);
 
     if (aFreeSpace > bFreeSpace) {
       return a;
@@ -414,15 +410,13 @@ class BeansWindowManager extends XYPointer {
   /// 
   /// [bestState1Or2Candidate] is used initially. If this is inconclusive, the collection with the largest
   /// [minPossibleMainSize], ie the one which will be squashed the least, is used.
-  int bestState2Candidate(BeansWindow win, int a, int b) {
+  Collection bestState2Candidate(BeansWindow win, Collection a, Collection b) {
     final resizeBest = bestState1Or2Candidate(win, a, b);
     if (resizeBest != null) {
       return resizeBest;
     }
 
-    final candA = _windows[a];
-    final candB = _windows[b];
-    if (minPossibleMainSize(candA) > minPossibleMainSize(candB)) {
+    if (minPossibleMainSize(a) > minPossibleMainSize(b)) {
       return a;
     } else {
       // again, if they're equal b will be returned
@@ -466,8 +460,6 @@ class BeansWindowManager extends XYPointer {
     addWindowToCollection(
       win,
       collection,
-      /*mainPos: offsetEnd(collection.last),
-      crossPos: alignedStart(collection.last),*/
       mainSize_: minMainSize(win),
       crossSize_: crossSize(collection.windows.last)
     );
@@ -487,10 +479,10 @@ class BeansWindowManager extends XYPointer {
 
     _windows.add(Collection());
 
-    resizeCollections(_windows.length - 1, crossSize_);
+    resizeCollections(_windows.last, crossSize_);
     addWindowToCollection(
       win,
-      _windows.length - 1,
+      _windows.last,
       /*mainPos: 0,
       crossPos: previousCollection == null ? 0 : alignedEnd(previousCollection.last),*/
       mainSize_: totalMainSize,
@@ -538,12 +530,11 @@ class BeansWindowManager extends XYPointer {
       return;
     }
 
-    final candidates = <int>[];
-    int? selection;
+    final candidates = <Collection>[];
+    Collection? selection;
 
     //* CHECK FOR STATE 1 CANDIDATES
-    for (var i=0; i<_windows.length; i++) {
-      final candidate = _windows[i];
+    for (var candidate in _windows) {
       if (
         // it will be able to fit in at the end by resizing ONLY the final window
         (
@@ -559,11 +550,11 @@ class BeansWindowManager extends XYPointer {
           ) ||
           // OR it does need a resize, but the resize wouldn't cause a layout overflow.
           (
-            !wouldOverflow(i, minCrossSize(win))
+            !wouldOverflow(candidate, minCrossSize(win))
           )
         )
       ) {
-        candidates.add(i);
+        candidates.add(candidate);
       }
     }
 
@@ -581,8 +572,7 @@ class BeansWindowManager extends XYPointer {
     }
 
     //* CHECK FOR STATE 2 CANDIDATES
-    for (var i=0; i<_windows.length; i++) {
-      final candidate = _windows[i];
+    for (var candidate in _windows) {
       if (
         // It will be able to fit into the collection if all windows are resized
         (
@@ -597,11 +587,11 @@ class BeansWindowManager extends XYPointer {
             minCrossSize(win) <= crossSize(candidate.windows.last)
           ) ||
           (
-            !wouldOverflow(i, minCrossSize(win))
+            !wouldOverflow(candidate, minCrossSize(win))
           )
         )
       ) {
-        candidates.add(i);
+        candidates.add(candidate);
       }
     }
 
