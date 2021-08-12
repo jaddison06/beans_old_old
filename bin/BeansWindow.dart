@@ -17,6 +17,7 @@ abstract class BeansWindow {
 
   // empty bodies provided - you don't have to override these if you just want some kinda info display window
   void onKeyDown(KeyCode key) {}
-  void onMouseMove(int x, int y) {}
-  void onMouseDown(int x, int y, MouseButton button) {}
+  void onMouseMove(V2 pos) {}
+  void onMouseDown(V2 pos, MouseButton button) {}
+  void onMouseUp(V2 pos, MouseButton button) {}
 }

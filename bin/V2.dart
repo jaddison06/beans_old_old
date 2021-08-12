@@ -1,3 +1,6 @@
+/// Utility for working with 2D positions or sizes
+///
+/// Same as Colour in that everything's mutable so you can use .. to make & chain changes.
 class V2 {
   int x, y;
   V2(this.x, this.y);
@@ -5,6 +8,11 @@ class V2 {
   V2.origin() :
     x = 0,
     y = 0;
+  
+  V2.square(int val) :
+    x = val,
+    y = val;
+
 
   V2 operator + (Object other) {
     switch (other.runtimeType) {
