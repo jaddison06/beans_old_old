@@ -7,6 +7,7 @@ import 'ColourWindow.dart';
 import 'dart:math';
 import 'XYPointer.dart';
 import 'BeansRenderWindow.dart';
+import 'CatchAll.dart';
 
 extension on Iterable<int> {
   int sum() {
@@ -51,7 +52,7 @@ class WindowData {
 }
 
 /// A row or column of windows
-class Collection extends XYPointer {
+class Collection extends XYPointer with CatchAll {
   static int _instanceCount = 0;
 
   final int _id;
@@ -98,18 +99,18 @@ class Collection extends XYPointer {
     _forEachWithMainPos((wd, mainPos) {
       final x_ = x(mainPos, crossPos);
       final y_ = y(mainPos, crossPos);
-      try {
+      catchAll(() {
         wd.render(
           rw,
           x_,
           y_
         );
-      } catch (e, trace) {
+      }, (e, trace) {
         rw.FillRectC(x_, y_, wd.width, wd.height, 255, 0, 0);
         final font = FontCache.family().font();
         final msg = 'Error while rendering window ${wd.window.title}:\n$e\nTraceback:\n$trace';
         rw.DrawText(font, msg, x_, y_, 0, 0, 0, 255);
-      }
+      });
     });
   }
 
@@ -145,9 +146,11 @@ enum BeansWindowLayoutMode {
 /// - Hit-testing windows and passing these events to them
 /// - Allowing the user to resize, relocate, add, or remove windows
 /// - Rendering window decorations and other UI elements
-class BeansWindowManager extends XYPointer {
+class BeansWindowManager extends XYPointer with CatchAll {
   late final BeansRenderer _ren;
   final BeansRenderWindow _rw;
+
+  String? panicMsg;
 
   final List<Collection> _windows = [];
   
@@ -180,7 +183,8 @@ class BeansWindowManager extends XYPointer {
     _ren = BeansRenderer(
       rw: _rw,
       render: _render,
-      event: _event
+      event: _event,
+      onError: gpanic
     );
     _testWindows.addAll([
       ColourWindow(
@@ -502,7 +506,7 @@ class BeansWindowManager extends XYPointer {
 
   /// Something has gone seriously wrong, but the BeansRenderWindow is still alive, so display a graphical panic screen.
   void gpanic(Object exception, StackTrace trace) {
-    print('An exception occured within Beans:\n$exception\nTrace:\n$trace');
+    panicMsg = 'An exception occured within Beans:\n$exception\nTrace:\n$trace';
   }
 
   /// Adds a [BeansWindow] to the layout
@@ -628,11 +632,7 @@ class BeansWindowManager extends XYPointer {
 
   /// Starts the event loop.
   void start() {
-    try {
-      _ren.run();
-    } catch (e, trace) {
-      gpanic(e, trace);
-    }
+    _ren.run();
   }
 
   /// Destroys any memory that has been allocated
@@ -662,6 +662,21 @@ class BeansWindowManager extends XYPointer {
   /// 
   /// Each window's x pos, y pos, width & height are updated to account for rounding issues during [addWindow].
   void _render(BeansRenderWindow rw) {
+    if (panicMsg != null) {
+      // If we're supposed to be panicking, then try and show the panic message.
+      // But it's entirely possible that the reason we're panicking is because of a RenderWindow problem meaning we can't render.
+      // If that happens, we'll just enter an infinite loop, with _ren catching the exception and calling gpanic().
+      // The solution is to catch our own exceptions while we're rendering the panic message, so if something has gone
+      // that badly wrong we can tell the renderer to stop handling our error and just pass it up, which will lead to
+      // Beans._panic() and a clean-ish program exit.
+      catchAll(() {
+        final font = FontCache.family().font();
+        rw.DrawText(font, panicMsg!, 0, 0, 255, 0, 0);
+      }, (e, trace) {
+        _ren.handleErrors = false;
+      });
+      return;
+    }
     _forEachCollectionWithCrossPos((collection, crossPos) {
       collection.render(rw, crossPos);
     });

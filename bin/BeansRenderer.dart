@@ -1,18 +1,22 @@
 import 'dart_codegen.dart';
 import 'BeansRenderWindow.dart';
+import 'CatchAll.dart';
 
 /// BeansRenderer is the main class used to interface with the C in [BeansRenderWindow]
 /// from Dart code. It takes care of the event loop & makes sure the window
 /// is painted and cleared properly. It is **not** responsible for cleaning up
 /// the [BeansRenderWindow]`
-class BeansRenderer {
+class BeansRenderer with CatchAll {
   final BeansRenderWindow rw;
   final Event _event;
 
   bool _shouldQuit = false;
 
+  bool handleErrors = true;
+
   final void Function(BeansRenderWindow) render;
   final void Function(Event) event;
+  final void Function(Object, StackTrace) onError;
 
   /// [rw] is the [BeansRenderWindow] that will be used for rendering.
   /// [render] is a callback that should draw graphics to the [BeansRenderWindow]. It should **not** call [BeansRenderWindow.Flush].
@@ -21,7 +25,8 @@ class BeansRenderer {
   BeansRenderer({
     required this.rw,
     required this.render,
-    required this.event
+    required this.event,
+    required this.onError
   }) :
     _event = Event();
   
@@ -36,13 +41,22 @@ class BeansRenderer {
   }
 
   void _paint() {
-    render(rw);
+    if (handleErrors) {
+      catchAll(() => render(rw), onError);
+    }
+    else {
+      render(rw);
+    }
     rw.Flush();
   }
 
   void _processAllEvents() {
     while (_event.Poll() > 0) {
-      event(_event);
+      if (handleErrors) {
+        catchAll(() => event(_event), onError);
+      } else {
+        event(_event);
+      }
     }
   }
   

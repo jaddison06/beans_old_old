@@ -3,10 +3,11 @@ import 'BeansWindowManager.dart';
 import 'dart:io';
 import 'FontCache.dart';
 import 'BeansRenderWindow.dart';
+import 'CatchAll.dart';
 
 /// Beans is responsible for initialization, error handling & cleanup at
 /// the highest level. It creates the [BeansRenderWindow] and the [BeansWindowManager].
-class Beans {
+class Beans with CatchAll {
   late final BeansRenderWindow _rw;
   late final BeansWindowManager _wm;
 
@@ -28,18 +29,9 @@ class Beans {
     exit(0);
   }
 
-  /// execute some code with a catchall
-  void _catchAll(void Function() code) {
-    try {
-      code();
-    } catch (e, trace) {
-      _panic('A fatal exception occured within Beans:\n$e\nOccured at:\n$trace');
-    }
-  }
-
   /// Start the event loop
   void start() {
-    _catchAll(() => _wm.start());
+    catchAll(() => _wm.start(), (e, trace) => _panic('A fatal exception occured within Beans:\n$e\nOccured at:\n$trace'));
   }
 
   /// Free resources
