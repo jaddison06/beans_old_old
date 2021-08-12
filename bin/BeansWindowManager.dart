@@ -1,5 +1,4 @@
 import 'BeansWindow.dart';
-import 'FontCache.dart';
 import 'dart_codegen.dart';
 import 'BeansRenderer.dart';
 import 'dart:ffi';
@@ -107,9 +106,8 @@ class Collection extends XYPointer with CatchAll {
         );
       }, (e, trace) {
         rw.FillRectC(x_, y_, wd.width, wd.height, 255, 0, 0);
-        final font = FontCache.family().font();
         final msg = 'Error while rendering window ${wd.window.title}:\n$e\nTraceback:\n$trace';
-        rw.DrawText(font, msg, x_, y_, 0, 0, 0, 255);
+        rw.DrawText(msg, x_, y_, 0, 0, 0);
       });
     });
   }
@@ -664,14 +662,13 @@ class BeansWindowManager extends XYPointer with CatchAll {
   void _render(BeansRenderWindow rw) {
     if (panicMsg != null) {
       // If we're supposed to be panicking, then try and show the panic message.
-      // But it's entirely possible that the reason we're panicking is because of a RenderWindow problem meaning we can't render.
+      // But it's entirely possible that the reason we're panicking is because of a RenderWindow problem, meaning we can't render.
       // If that happens, we'll just enter an infinite loop, with _ren catching the exception and calling gpanic().
       // The solution is to catch our own exceptions while we're rendering the panic message, so if something has gone
       // that badly wrong we can tell the renderer to stop handling our error and just pass it up, which will lead to
       // Beans._panic() and a clean-ish program exit.
       catchAll(() {
-        final font = FontCache.family().font();
-        rw.DrawText(font, panicMsg!, 0, 0, 255, 0, 0);
+        rw.DrawText(panicMsg!, 0, 0, 255, 0, 0);
       }, (e, trace) {
         _ren.handleErrors = false;
       });
@@ -680,8 +677,7 @@ class BeansWindowManager extends XYPointer with CatchAll {
     _forEachCollectionWithCrossPos((collection, crossPos) {
       collection.render(rw, crossPos);
     });
-    final font = FontCache.family().font();
-    rw.DrawText(font, 'DEEZ NUTSSSSSSS', 15, 15, 0, 0, 0, 255);
+    rw.DrawText('DEEZ NUTSSSSSSS', 15, 15, 0, 0, 0);
   }
 
   /// update the focused window based on [_x] and [_y]

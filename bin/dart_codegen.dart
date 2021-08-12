@@ -204,8 +204,8 @@ class RenderWindow {
         return _FillRect!(structPointer, x, y, w, h);
     }
 
-    void DrawText(BeansFont font, String text, int x, int y, int r, int g, int b, int a) {
-        _validatePointer('DrawText');
+    void cDrawText(BeansFont font, String text, int x, int y, int r, int g, int b, int a) {
+        _validatePointer('cDrawText');
         return _DrawText!(structPointer, font.structPointer, text.toNativeUtf8(), x, y, r, g, b, a);
     }
 

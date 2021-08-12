@@ -1,4 +1,5 @@
 import 'dart_codegen.dart';
+import 'FontCache.dart';
 
 class BeansRenderWindow extends RenderWindow {
   BeansRenderWindow() : super('Beans');
@@ -21,15 +22,15 @@ class BeansRenderWindow extends RenderWindow {
   }
 
   /// Default text drawing functions are weird around newlines
-  @override
-  void DrawText(BeansFont font, String text, int x, int y, int r, int g, int b, [int a = 255]) {
+  void DrawText(String text, int x, int y, int r, int g, int b, {int a = 255, BeansFont? font}) {
+    font ??= FontCache.family().font();
     final lines = text.split('\n');
     var lineY = y;
     for (var line in lines) {
       // can't draw an empty string - GetTextTexture fails.
       // we still need to add the line height though
       if (line != '') {
-        super.DrawText(font, line, x, lineY, r, g, b, a);
+        cDrawText(font, line, x, lineY, r, g, b, a);
       }
       lineY += font.GetTextHeight(line);
     }

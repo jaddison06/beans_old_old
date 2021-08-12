@@ -34,5 +34,6 @@ class RenderWindow {
     void DrawRect(int x, int y, int w, int h)
     void FillRect(int x, int y, int w, int h)
 
+    @Show(cDrawText) // we're going to create a sexier version at the Dart level called DrawText
     void DrawText(BeansFont* font, char* text, int x, int y, int r, int g, int b, int a)
 }
