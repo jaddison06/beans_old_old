@@ -186,28 +186,28 @@ class RenderWindow {
         return _Flush!(structPointer);
     }
 
-    void SetColour(int r, int g, int b, int a) {
-        _validatePointer('SetColour');
+    void cSetColour(int r, int g, int b, int a) {
+        _validatePointer('cSetColour');
         return _SetColour!(structPointer, r, g, b, a);
     }
 
-    void DrawPoint(int x, int y) {
-        _validatePointer('DrawPoint');
+    void cDrawPoint(int x, int y) {
+        _validatePointer('cDrawPoint');
         return _DrawPoint!(structPointer, x, y);
     }
 
-    void DrawLine(int x1, int y1, int x2, int y2) {
-        _validatePointer('DrawLine');
+    void cDrawLine(int x1, int y1, int x2, int y2) {
+        _validatePointer('cDrawLine');
         return _DrawLine!(structPointer, x1, y1, x2, y2);
     }
 
-    void DrawRect(int x, int y, int w, int h) {
-        _validatePointer('DrawRect');
+    void cDrawRect(int x, int y, int w, int h) {
+        _validatePointer('cDrawRect');
         return _DrawRect!(structPointer, x, y, w, h);
     }
 
-    void FillRect(int x, int y, int w, int h) {
-        _validatePointer('FillRect');
+    void cFillRect(int x, int y, int w, int h) {
+        _validatePointer('cFillRect');
         return _FillRect!(structPointer, x, y, w, h);
     }
 

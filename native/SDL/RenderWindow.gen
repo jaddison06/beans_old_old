@@ -28,13 +28,21 @@ class RenderWindow {
 
     void Flush()
 
+    // there's a few like this where i change the name to start with 'c'. this is because
+    // i'm going to create a sexies implementation at the Dart level, which will have the actual name.
+    @Show(cSetColour)
     void SetColour(int r, int g, int b, int a)
+
+    @Show(cDrawPoint)
     void DrawPoint(int x, int y)
+    @Show(cDrawLine)
     void DrawLine(int x1, int y1, int x2, int y2)
+    @Show(cDrawRect)
     void DrawRect(int x, int y, int w, int h)
+    @Show(cFillRect)
     void FillRect(int x, int y, int w, int h)
 
-    @Show(cDrawText) // we're going to create a sexier version at the Dart level called DrawText
+    @Show(cDrawText)
     void DrawText(BeansFont* font, char* text, int x, int y, int r, int g, int b, int a)
 
     @Show(cDrawImage)

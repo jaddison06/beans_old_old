@@ -7,6 +7,9 @@ import 'dart:math';
 import 'XYPointer.dart';
 import 'BeansRenderWindow.dart';
 import 'CatchAll.dart';
+import 'Colour.dart';
+import 'Config.dart';
+import 'V2.dart';
 
 extension on Iterable<int> {
   int sum() {
@@ -14,36 +17,103 @@ extension on Iterable<int> {
   }
 }
 
+V2 toV2(int main, int cross) {
+  final isColumns = BeansWindowManager.layoutMode == BeansWindowLayoutMode.Columns;
+  return V2(
+    isColumns ? cross : main,
+    isColumns ? main : cross
+  );
+}
+
 /// WindowData represents metadata about a [BeansWindow], needed by the [BeansWindowManager].
 class WindowData {
-  int width;
-  int height;
+  V2 size;
   bool isFocused;
   bool isFloating;
   BeansWindow window;
+  final _conf = Config.instance;
 
   /// Tests if the event at ([hitX], [hitY]) occured inside this window.
   /// [hitTest] is *inclusive* on the left/top and *exclusive* on the right/bottom.
-  bool hitTest(int x, int y, int hitX, int hitY) {
-    return (
-      hitX >= x &&
-      hitY >= y &&
-      hitX < x2(x) &&
-      hitY < y2(y)
-    );
+  bool hitTest(V2 windowPos, V2 hit) {
+    return windowPos.hitTest(size, hit);
   }
 
   /// Render [window] using [x], [y], [width] and [height].
-  void render(BeansRenderWindow rw, int x, int y) {
-    window.render(rw, x, y, width, height);
+  void render(BeansRenderWindow rw, V2 windowPos, bool showDecorations) {
+    window.render(rw, windowPos, size);
+    if (showDecorations) {
+      _renderWindowDecorations(rw, windowPos);
+    }
   }
 
-  int x2(int x) => x + width;
-  int y2(int y) => y + height;
+  void _renderWindowDecorations(BeansRenderWindow rw, V2 windowPos) {
+    final tb1 = V2(windowPos.x, windowPos.y - _conf.windowTitleBarHeight);
+    final tb2 = V2(size.x, _conf.windowTitleBarHeight);
+
+    // bg col
+    rw.FillRect(tb1, tb1, window.titleBarBGCol);
+    // bar
+    rw.FillRect(tb1, tb2, _conf.windowTitleBarCol);
+    
+    rw.SetColour(_conf.windowTitleBarIconCol);
+
+    final iconSize = _conf.windowTitleBarIconSize;
+
+    _drawCross(rw, windowPos, iconSize);
+    _drawDragTarget(rw, windowPos, iconSize);
+  }
+
+  int _iconY(int windowY) {
+    final tbY = windowY - _conf.windowTitleBarHeight;
+    final padding = (_conf.windowTitleBarHeight - _conf.windowTitleBarIconSize) ~/ 2;
+    return tbY + padding;
+  }
+
+  V2 _iconPos(V2 windowPos, int rOffset) {
+    final tbX2 = x2(windowPos.x);
+    return V2(
+      tbX2 - rOffset,
+      _iconY(windowPos.y)
+    );
+  }
+
+  void _drawCross(BeansRenderWindow rw, V2 windowPos, int iconSize) {
+    final pos = _iconPos(windowPos, 80);
+    final pos2 = V2(
+      pos.x + iconSize,
+      pos.y + iconSize
+    );
+    rw.DrawLine(pos, pos2);
+    rw.DrawLine(
+      V2(pos2.x, pos.y),
+      V2(pos.x, pos2.y)
+    );
+  }
+
+  void _drawDragTarget(BeansRenderWindow rw, V2 windowPos, int size) {
+    final pos = _iconPos(windowPos, 40);
+    final gap = size / 2;
+    final thickness = 3;
+    for (var i=0; i<3; i++) {
+      for (var j=0; j<3; j++) {
+        final offset = V2(
+          (i * gap).toInt(),
+          (j * gap).toInt()
+        );
+        rw.FillRect(
+          pos + offset,
+          V2(thickness, thickness)
+        );
+      }
+    }
+  }
+
+  int x2(int x) => x + size.x;
+  int y2(int y) => y + size.y;
 
   WindowData({
-    required this.width,
-    required this.height,
+    required this.size,
     required this.isFocused,
     required this.isFloating,
     required this.window
@@ -52,75 +122,58 @@ class WindowData {
 
 /// A row or column of windows
 class Collection extends XYPointer with CatchAll {
-  static int _instanceCount = 0;
 
-  final int _id;
-
-  Collection() :
-    _id = _instanceCount {
-      _instanceCount ++;
-    }
-  
-  @override
-  bool operator == (Object other) {
-    if (other.runtimeType != Collection) return false;
-    return (other as Collection)._id == _id;
-  }
+  final _conf = Config.instance;
 
   final windows = <WindowData>[];
 
   bool get isColumns => BeansWindowManager.layoutMode == BeansWindowLayoutMode.Columns;
 
-  int x(int mainPos, int crossPos) => isColumns ? crossPos : mainPos;
-  int y(int mainPos, int crossPos) => isColumns ? mainPos : crossPos;
-
   void setCrossSize(int newCrossSize) {
     for (var wd in windows) {
       if (isColumns) {
-        wd.width = newCrossSize;
+        wd.size.x = newCrossSize;
       } else {
-        wd.height = newCrossSize;
+        wd.size.y = newCrossSize;
       }
     }
   }
 
   /// quits if [cb] returns `true`
   void _forEachWithMainPos(bool? Function(WindowData, int) cb) {
-    var mainPos = 0;
+    var mainPos = isColumns ? _conf.windowTitleBarHeight : 0;
     for (var wd in windows) {
       if (cb(wd, mainPos) == true) return;
 
-      mainPos += isColumns ? wd.height : wd.width;
+      mainPos += isColumns ? wd.size.y : wd.size.x;
+      if (isColumns) mainPos += _conf.windowTitleBarHeight;
     }
   }
 
   void render(BeansRenderWindow rw, int crossPos) {
     _forEachWithMainPos((wd, mainPos) {
-      final x_ = x(mainPos, crossPos);
-      final y_ = y(mainPos, crossPos);
+      final pos = toV2(mainPos, crossPos);
       catchAll(() {
         wd.render(
           rw,
-          x_,
-          y_
+          pos,
+          true
         );
       }, (e, trace) {
-        rw.FillRectC(x_, y_, wd.width, wd.height, 255, 0, 0);
+        rw.FillRect(pos, wd.size, Colours.red);
         final msg = 'Error while rendering window ${wd.window.title}:\n$e\nTraceback:\n$trace';
-        rw.DrawText(msg, x_, y_, 0, 0, 0);
+        rw.DrawText(msg, pos, Colours.black);
       });
     });
   }
 
-  WindowData? hitTest(int hitX, int hitY, int crossPos) {
+  WindowData? hitTest(V2 hit, int crossPos) {
     WindowData? out;
     _forEachWithMainPos((wd, mainPos) {
       if (
         wd.hitTest(
-          x(mainPos, crossPos),
-          y(mainPos, crossPos),
-          hitX,
-          hitY
+          toV2(mainPos, crossPos),
+          hit
         )
       ) {
         out = wd;
@@ -148,6 +201,8 @@ class BeansWindowManager extends XYPointer with CatchAll {
   late final BeansRenderer _ren;
   final BeansRenderWindow _rw;
 
+  final _conf = Config.instance;
+
   String? panicMsg;
 
   late final Image _forgor;
@@ -167,11 +222,12 @@ class BeansWindowManager extends XYPointer with CatchAll {
   }
 
   void _forEachCollectionWithCrossPos(bool? Function(Collection, int) cb) {
-    var crossPos = 0;
+    var crossPos = isColumns ? 0 : _conf.windowTitleBarHeight;
     for (var collection in _windows) {
       if (cb(collection, crossPos) == true) return;
 
       crossPos += crossSize(collection.windows.last);
+      if (!isColumns) crossPos += _conf.windowTitleBarHeight;
     }
   }
 
@@ -191,65 +247,58 @@ class BeansWindowManager extends XYPointer with CatchAll {
 
     _testWindows.addAll([
       ColourWindow(
-        minWidth: 69,
-        minHeight: 150,
-        r: 255,
-        g: 0,
-        b: 0,
-        onClick: addNextTest
+        minSize: V2(69, 150),
+        colour: Colours.white,
       ),
       ColourWindow(
-        minWidth: 500,
-        minHeight: 250,
-        r: 66,
-        g: 22,
-        b: 120,
-        onClick: addNextTest
+        minSize: V2(500, 250),
+        colour: Colour(66, 22, 120),
       ),
       ColourWindow(
-        minWidth: 100,
-        minHeight: 600,
-        r: 255,
-        g: 255,
-        b: 0,
-        onClick: addNextTest
+        minSize: V2(100, 600),
+        colour: Colours.yellow,
       ),
       ColourWindow(
-        minWidth: 1500,
-        minHeight: 50,
-        r: 0,
-        g: 255,
-        b: 0,
-        onClick: addNextTest
+        minSize: V2(1500, 50),
+        colour: Colours.green,
       ),
       ColourWindow(
-        minWidth: 100,
-        minHeight: 900,
-        r: 0,
-        g: 255,
-        b: 255,
-        onClick: addNextTest
+        minSize: V2(100, 900),
+        colour: Colours.cyan,
       )
     ]);
-    addNextTest();
   }
 
   void addNextTest() {
     if (_windowCount < _testWindows.length) {
-      print('adding new test window!');
+      // print('adding new test window!');
       addWindow(_testWindows[_windowCount]);
     }
   }
 
   /// get minimum main axis size of the window
-  int minMainSize (BeansWindow win) => isColumns ? win.minHeight : win.minWidth;
+  int minMainSize (BeansWindow win) => isColumns ? win.minSize.y : win.minSize.x;
   /// get minimum cross axis size of the window
-  int minCrossSize(BeansWindow win) => isColumns ? win.minWidth : win.minHeight;
+  int minCrossSize(BeansWindow win) => isColumns ? win.minSize.x : win.minSize.y;
+
+  /// get minimum main axis size of the window, including the title bar
+  int minMainSizeWithTitlebar(BeansWindow win) {
+    var out = minMainSize(win);
+    if (isColumns) out += _conf.windowTitleBarHeight;
+    return out;
+  }
+
+  /// get minimum cross axis size of the window, including the title bar
+  int minCrossSizeWithTitlebar(BeansWindow win) {
+    var out = minCrossSize(win);
+    if (!isColumns) out += _conf.windowTitleBarHeight;
+    return out;
+  }
 
   /// get current main axis size of the window
-  int mainSize (WindowData wd) => isColumns ? wd.height : wd.width;
+  int mainSize (WindowData wd) => isColumns ? wd.size.y : wd.size.x;
   /// get current cross axis size of the window
-  int crossSize(WindowData wd) => isColumns ? wd.width : wd.height;
+  int crossSize(WindowData wd) => isColumns ? wd.size.x : wd.size.y;
 
 
   /// for a column: if every window in the column was at `minHeight`, how tall would the whole thing be?
@@ -260,6 +309,20 @@ class BeansWindowManager extends XYPointer with CatchAll {
   /// for a column: finds the window with the largest `minWidth`.
   int minPossibleCrossSize(Collection collection) {
     return minCrossSize(collection.windows.reduce((value, element) => minCrossSize(value.window) > minCrossSize(element.window) ? value : element).window);
+  }
+
+  /// minPossibleMainSize plus title bars
+  int minPossibleMainSizeWithTitleBars(Collection collection) {
+    var out = minPossibleMainSize(collection);
+    if (isColumns) out += _conf.windowTitleBarHeight;
+    return out;
+  }
+
+  /// minPossibleCrossSize plus title bars
+  int minPossibleCrossSizeWithTitleBars(Collection collection) {
+    var out = minPossibleCrossSize(collection);
+    if (!isColumns) out += _conf.windowTitleBarHeight;
+    return out;
   }
 
   /// get the current total main axis size of the collection
@@ -279,18 +342,18 @@ class BeansWindowManager extends XYPointer with CatchAll {
   /// set the main axis size of a window
   void setMainSize(WindowData wd, int newSize) {
     if (isColumns) {
-      wd.height = newSize;
+      wd.size.y = newSize;
     } else {
-      wd.width = newSize;
+      wd.size.x = newSize;
     }
   }
 
   /// set the cross axis size of a window
   void setCrossSize(WindowData wd, int newSize) {
     if (isColumns) {
-      wd.width = newSize;
+      wd.size.x = newSize;
     } else {
-      wd.height = newSize;
+      wd.size.y = newSize;
     }
   }
 
@@ -299,8 +362,7 @@ class BeansWindowManager extends XYPointer with CatchAll {
   void addWindowToCollection(BeansWindow win, Collection collection, {required int mainSize_, required int crossSize_, bool focus = true}) {
     collection.windows.add(
       WindowData(
-        width: isColumns ? crossSize_ : mainSize_,
-        height: isColumns ? mainSize_ : crossSize_,
+        size: toV2(mainSize_, crossSize_),
         window: win,
         isFloating: false,
         isFocused: focus
@@ -319,6 +381,9 @@ class BeansWindowManager extends XYPointer with CatchAll {
         sum += newCrossSize;
       } else {
         sum += minPossibleCrossSize(collection);
+      }
+      if (!isColumns) {
+        sum += _conf.windowTitleBarHeight;
       }
     }
     return sum > totalCrossSize;
@@ -435,7 +500,8 @@ class BeansWindowManager extends XYPointer with CatchAll {
   /// layout to overflow.
   void addState1(BeansWindow win, Collection collection) {
     // Gap between the two windows if they were both at their minMainSize
-    final gap = mainSize(collection.windows.last) - (minMainSize(collection.windows.last.window) + minMainSize(win));
+    var gap = mainSize(collection.windows.last) - (minMainSize(collection.windows.last.window) + minMainSizeWithTitlebar(win));
+
     /// resize the current final window
     setMainSize(collection.windows.last, minMainSize(collection.windows.last.window) + (gap ~/ 2));
     resizeIfNeeded(collection, win);
@@ -444,7 +510,7 @@ class BeansWindowManager extends XYPointer with CatchAll {
       collection,
       /*mainPos: offsetEnd(collection.last),
       crossPos: alignedStart(collection.last),*/
-      mainSize_: minMainSize(win) + (gap ~/ 2),
+      mainSize_: minMainSize(win) + (gap ~/ 2), //? does this need to account for the titlebar?
       crossSize_: crossSize(collection.windows.last)
     );
   }
@@ -454,7 +520,7 @@ class BeansWindowManager extends XYPointer with CatchAll {
   void addState2(BeansWindow win, Collection collection) {
     final currentMainSize = totalMainAxisSize();
     //! must be a double
-    final ratio = (currentMainSize - minMainSize(win)) / currentMainSize;
+    final ratio = (currentMainSize - minMainSizeWithTitlebar(win)) / currentMainSize;
     for (var modifyWindow in collection.windows) {
       setMainSize(modifyWindow,
         max(
@@ -477,14 +543,18 @@ class BeansWindowManager extends XYPointer with CatchAll {
     final totalMainSize = totalMainAxisSize();
     final totalCrossSize = totalCrossAxisSize();
     
-    final currentTotalMinCrossSize = _windows.map((collection) => minPossibleCrossSize(collection)).sum();
+    final currentTotalMinCrossSize = _windows.map((collection) => minPossibleCrossSizeWithTitleBars(collection)).sum();
+
     // gap between all the current collections at their minPossibleCrossSize and this window at its minCrossSize
-    final gap = totalCrossSize - (currentTotalMinCrossSize + minCrossSize(win));
-    final crossSize_ = minCrossSize(win) + (gap ~/ 2);
+    final gap = totalCrossSize - (currentTotalMinCrossSize + minCrossSizeWithTitlebar(win));
+    var crossSize_ = minCrossSize(win) + (gap ~/ 2); //? does this need to account for the title bar?
 
     final previousCollection = _windows.isEmpty ? null : _windows.last;
 
     _windows.add(Collection());
+
+    var winMainSize = totalMainSize;
+    if (isColumns) winMainSize -= _conf.windowTitleBarHeight;
 
     resizeCollections(_windows.last, crossSize_);
     addWindowToCollection(
@@ -492,7 +562,7 @@ class BeansWindowManager extends XYPointer with CatchAll {
       _windows.last,
       /*mainPos: 0,
       crossPos: previousCollection == null ? 0 : alignedEnd(previousCollection.last),*/
-      mainSize_: totalMainSize,
+      mainSize_: winMainSize,
       crossSize_: previousCollection == null ? totalCrossSize : crossSize_
     );
   }
@@ -530,10 +600,10 @@ class BeansWindowManager extends XYPointer with CatchAll {
 
     _rw.GetSize(xPtr, yPtr);
     if (
-      win.minWidth > xPtr.value ||
-      win.minHeight > yPtr.value
+      win.minSize.x > xPtr.value ||
+      win.minSize.y > (yPtr.value - _conf.windowTitleBarHeight)
     ) {
-      error('Window ${win.title} had out-of-bounds minimum size: (${win.minWidth}x${win.minHeight}) in a (${xPtr.value}x${yPtr.value}) window.');
+      error('Window ${win.title} had out-of-bounds minimum size: (${win.minSize.x}x${win.minSize.y}) in a (${xPtr.value}x${yPtr.value}) window, with titlebars of height ${_conf.windowTitleBarHeight}.');
       return;
     }
 
@@ -547,7 +617,7 @@ class BeansWindowManager extends XYPointer with CatchAll {
         (
           mainSize(candidate.windows.last) >= (
             minMainSize(candidate.windows.last.window) +
-            minMainSize(win)
+            minMainSizeWithTitlebar(win)
           )
         ) &&
         (
@@ -573,7 +643,7 @@ class BeansWindowManager extends XYPointer with CatchAll {
 
     // did we find a suitable candidate for State 1?
     if (selection != null) {
-      print('state 1!!');
+      // print('state 1!!');
       addState1(win, selection);
       return;
     }
@@ -584,8 +654,8 @@ class BeansWindowManager extends XYPointer with CatchAll {
         // It will be able to fit into the collection if all windows are resized
         (
           totalMainAxisSize() >= (
-            minPossibleMainSize(candidate) +
-            minMainSize(win)
+            minPossibleMainSizeWithTitleBars(candidate) +
+            minMainSizeWithTitlebar(win)
           )
         ) &&
         // Same as state 1
@@ -610,7 +680,7 @@ class BeansWindowManager extends XYPointer with CatchAll {
 
     // did we find a suitable candidate for State 2?
     if (selection != null) {
-      print('state 2!!');
+      // print('state 2!!');
       addState2(win, selection);
       return;
     }
@@ -619,16 +689,16 @@ class BeansWindowManager extends XYPointer with CatchAll {
     if (
       // a new collection with a cross size of the window's minCrossSize will fit into the layout
       totalCrossAxisSize() >= (
-        _windows.map((collection) => minPossibleCrossSize(collection)).sum() +
-        minCrossSize(win)
+        _windows.map((collection) => minPossibleCrossSizeWithTitleBars(collection)).sum() +
+        minCrossSizeWithTitlebar(win)
       )
     ) {
-      print('state 3!!');
+      // print('state 3!!');
       addState3(win);
       return;
     }
     
-    print('state 4!!');
+    // print('state 4!!');
     state4(win.title);
 
   }
@@ -661,6 +731,11 @@ class BeansWindowManager extends XYPointer with CatchAll {
     return out;
   }
 
+  void _drawPanicScreen(BeansRenderWindow rw) {
+    rw.DrawImage(_forgor, V2(0, 0));
+    rw.DrawText(panicMsg!, V2(0, _forgor.height), Colours.red);
+  }
+
   /// Render all windows.
   /// 
   /// Each window's x pos, y pos, width & height are updated to account for rounding issues during [addWindow].
@@ -670,26 +745,32 @@ class BeansWindowManager extends XYPointer with CatchAll {
       // But it's entirely possible that the reason we're panicking is because of a RenderWindow problem, meaning we can't render.
       // If that happens, we'll just enter an infinite loop, with _ren catching the exception and calling gpanic().
       // The solution is to catch our own exceptions while we're rendering the panic message, so if something has gone
-      // that badly wrong we can tell the renderer to stop handling our error and just pass it up, which will lead to
+      // that badly wrong we can stop handling our own error and just pass it up, which will lead to
       // Beans._panic() and a clean-ish program exit.
-      catchAll(() {
-        rw.DrawImage(_forgor, 0, 0);
-        rw.DrawText(panicMsg!, 0, _forgor.height, 255, 0, 0);
-      }, (e, trace) {
-        _ren.handleErrors = false;
-      });
+      if (_ren.handleErrors) {
+        catchAll(() => _drawPanicScreen(rw),
+        (e, trace) {
+          //print('error while drawing panic screen!!');
+          _ren.handleErrors = false;
+        });
+      } else {
+        _drawPanicScreen(rw);
+      }
       return;
     }
-    throw Exception('Null check operator used on a null value');
     _forEachCollectionWithCrossPos((collection, crossPos) {
       collection.render(rw, crossPos);
     });
+    catchAll(() {
+      // debug drawing here!
+      rw.DrawText('deez nuts', V2(69, 69), Colours.black);
+    }, gpanic);
   }
 
   /// update the focused window based on [_x] and [_y]
   void _setFocusedWindow() {
     _forEachCollectionWithCrossPos((collection, crossPos) {
-      final wd = collection.hitTest(xPtr.value, yPtr.value, crossPos);
+      final wd = collection.hitTest(V2(xPtr.value, yPtr.value), crossPos);
       if (wd != null) {
         wd.isFocused = true;
         return true;
@@ -722,6 +803,8 @@ class BeansWindowManager extends XYPointer with CatchAll {
 
         if (button == MouseButton.Right) {
           _ren.quit();
+        } else {
+          addNextTest();
         }
         
         _focusedWindow?.window.onMouseDown(xPtr.value, yPtr.value, button);

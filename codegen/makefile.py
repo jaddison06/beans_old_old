@@ -63,7 +63,7 @@ def codegen(files: list[ParsedGenFile]) -> str:
     ) + generate_makefile_item(
         "run",
         [
-            "libraries"
+            "all"
         ],
         [
             "dart run"

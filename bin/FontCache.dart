@@ -17,19 +17,33 @@ class FontCache {
     _fonts.clear();
   }
 
-  /// Get the [BeansFont] with size [size]. Similarly to [family], if [size] is null, then [defaultSize] is used. If that's
-  /// also null, a [StateError] is thrown.
+  int _pxToPt(int px) {
+    return px ~/ 1.333;
+  }
+
+  int? _getPt(int? pt, int? px) {
+    if (pt == null && px != null) {
+      pt = _pxToPt(px);
+    }
+    return pt;
+  }
+
+  int? get _defaultPt => _getPt(defaultPt, defaultPx);
+
+  /// Get the [BeansFont] with size [pt] or [px]. [pt] is used if both are provided. Similarly to [family],
+  /// if both [pt] and [px] are null, then [_defaultPt] is used. If that's also null, a [StateError] is thrown.
   /// 
   /// Do **not** call [BeansFont.Destroy] on the returned [BeansFont].
-  BeansFont font([int? size]) {
-    if (size == null) {
-      if (defaultSize == null) throw StateError('FontCache.font was called with a null size and a null defaultSize.');
-      size = defaultSize!;
+  BeansFont font({int? pt, int? px}) {
+    pt = _getPt(pt, px);
+    if (pt == null) {
+      pt = _defaultPt;
+      if (pt == null) throw StateError('FontCache.font was called with a null size, a null defaultPt, and a null defaultPx.');
     }
-    if (!_fonts.containsKey(size)) {
-      _fonts[size] = BeansFont(_fontName, size);
+    if (!_fonts.containsKey(pt)) {
+      _fonts[pt] = BeansFont(_fontName, pt);
     }
-    return _fonts[size]!;
+    return _fonts[pt]!;
   }
 
   //* STATIC MEMBERS & METHODS
@@ -37,7 +51,8 @@ class FontCache {
   static final _instances = <String, FontCache>{};
 
   static String? defaultFamily;
-  static int? defaultSize;
+  static int? defaultPt;
+  static int? defaultPx;
 
   /// get a [FontCache] for the font file at [fontName].
   /// 

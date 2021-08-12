@@ -64,6 +64,8 @@ RenderWindow* InitRenderWindow(const char* title) {
         return LogSDLError(out, SDLInitCode_CreateRenderer_Fail);
     }
 
+    SDL_SetRenderDrawBlendMode(out->ren, SDL_BLENDMODE_BLEND);
+
     out->errorCode = SDLInitCode_Success;
     out->frameCount = 0;
 
@@ -134,21 +136,6 @@ SDL_Texture* GetTextTexture(RenderWindow* rw, TTF_Font* font, char* text, int r,
     return textTexture;
 }
 
-int max(int a, int b) {
-    return a > b ? a : b;
-}
-
-int min(int a, int b) {
-    return a < b ? a : b;
-}
-
-void clip(SDL_Rect* renderRect, SDL_Rect* clipRect) {
-    renderRect->x = max(renderRect->x, clipRect->x);
-    renderRect->y = max(renderRect->y, clipRect->y);
-    renderRect->w = min(renderRect->w, clipRect->w);
-    renderRect->h = min(renderRect->h, clipRect->h);
-}
-
 void RenderTexture(RenderWindow* rw, SDL_Texture* texture, int x, int y, int width, int height) {
     SDL_Rect renderRect = {
         x: x,
@@ -156,7 +143,6 @@ void RenderTexture(RenderWindow* rw, SDL_Texture* texture, int x, int y, int wid
         w: width,
         h: height
     };
-
     SDL_RenderCopy(rw->ren, texture, NULL, &renderRect);
 }
 

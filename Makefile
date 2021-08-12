@@ -7,7 +7,7 @@ libraries: build/native/SDL/libRenderWindow.so build/native/SDL/libBeansFont.so 
 codegen:
 	python codegen/main.py
 
-run: libraries
+run: all
 	dart run
 
 clean:

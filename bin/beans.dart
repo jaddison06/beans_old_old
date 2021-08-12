@@ -19,7 +19,7 @@ class Beans with CatchAll {
     _wm = BeansWindowManager(_rw);
 
     FontCache.defaultFamily = 'res/DroidSansMono/DroidSansMono.ttf';
-    FontCache.defaultSize = 24;
+    FontCache.defaultPt = 24;
   }
 
   /// Something has gone seriously wrong and the WindowManager has died, so print a panic message to the terminal.

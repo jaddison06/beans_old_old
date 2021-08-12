@@ -1,44 +1,28 @@
-import 'dart_codegen.dart';
 import 'BeansWindow.dart';
 import 'BeansRenderWindow.dart';
+import 'Colour.dart';
+import 'V2.dart';
 
 class ColourWindow extends BeansWindow {
   @override
-  final int minWidth;
-  @override
-  final int minHeight;
-
-  final int r, g, b;
-  final void Function() onClick;
-
-  static int instanceCount = 0;
-  final bool _showError;
+  final V2 minSize;
+  
+  final Colour colour;
 
   ColourWindow({
-    required this.minWidth,
-    required this.minHeight,
-    required this.r,
-    required this.g,
-    required this.b,
-    required this.onClick
-  }) : _showError = instanceCount % 2 == 0 {
-    instanceCount++;
-  }
+    required this.minSize,
+    required this.colour,
+  });
 
   @override
-  String get title => 'ColourWindow($r, $g, $b)';
+  String get title => 'ColourWindow($colour)';
 
   @override
-  void render(BeansRenderWindow rw, int x, int y, int width, int height) {
-    if (_showError) {
-      throw Exception('your mum');
-    }
-    rw.FillRectC(x, y, width, height, r, g, b);
-  }
+  Colour get titleBarBGCol => colour;
 
   @override
-  void onMouseDown(int x, int y, MouseButton button) {
-    onClick();
+  void render(BeansRenderWindow rw, V2 pos, V2 size) {
+    rw.FillRect(pos, size, colour);
   }
 
 }
