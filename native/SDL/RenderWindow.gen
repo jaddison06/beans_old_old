@@ -2,37 +2,37 @@
 @LinkWithLib(SDL2_ttf)
 
 enum SDLInitCode {
-    Success, // Success
-    InitVideo_Fail, // SDL_InitVideo() failed
-    TTF_Init_Fail, // TTF_Init() failed
-    CreateWindow_Fail, // SDL_CreateWindow() failed
+    Success // Success
+    InitVideo_Fail // SDL_InitVideo() failed
+    TTF_Init_Fail // TTF_Init() failed
+    CreateWindow_Fail // SDL_CreateWindow() failed
     CreateRenderer_Fail // SDL_CreateRenderer() failed
 }
 
 class RenderWindow {
     @Initializer()
-    void* InitRenderWindow(char* title);
+    void* InitRenderWindow(char* title)
 
     @Show(Destroy)
     @Invalidates()
-    void DestroyRenderWindow();
+    void DestroyRenderWindow()
 
     @Getter(errorCode)
-    SDLInitCode RWGetErrorCode();
+    SDLInitCode RWGetErrorCode()
 
     @Getter(frameCount)
-    int RWGetFrameCount();
+    int RWGetFrameCount()
 
     @Show(GetSize)
-    void RWGetSize(int* width, int* height);
+    void RWGetSize(int* width, int* height)
 
-    void Flush();
+    void Flush()
 
-    void SetColour(int r, int g, int b, int a);
-    void DrawPoint(int x, int y);
-    void DrawLine(int x1, int y1, int x2, int y2);
-    void DrawRect(int x, int y, int w, int h);
-    void FillRect(int x, int y, int w, int h);
+    void SetColour(int r, int g, int b, int a)
+    void DrawPoint(int x, int y)
+    void DrawLine(int x1, int y1, int x2, int y2)
+    void DrawRect(int x, int y, int w, int h)
+    void FillRect(int x, int y, int w, int h)
 
-    void DrawText(BeansFont* font, char* text, int x, int y, int r, int g, int b, int a);
+    void DrawText(BeansFont* font, char* text, int x, int y, int r, int g, int b, int a)
 }

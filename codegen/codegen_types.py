@@ -55,12 +55,6 @@ class CodegenDataStructureField:
     annotations: list[CodegenAnnotation]
 
 @dataclass
-class CodegenStruct:
-    name: str
-    fields: list[CodegenDataStructureField]
-    annotations: list[CodegenAnnotation]
-
-@dataclass
 class CodegenEnumValue:
     name: str
     stringify_as: str
@@ -113,7 +107,6 @@ class ParsedGenFile:
     name: str
 
     functions: list[CodegenFunction]
-    structs: list[CodegenStruct]
     enums: list[CodegenEnum]
     classes: list[CodegenClass]
 

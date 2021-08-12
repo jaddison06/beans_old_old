@@ -78,7 +78,7 @@ def codegen(files: list[ParsedGenFile]) -> str:
             f"rm -f {DART_OUTPUT_PATH}"
         ]
     ) + generate_makefile_item(
-        # The <cloc> command-line utility MUST be installed, or this won't work.
+        # The `cloc` command-line utility MUST be installed, or this won't work.
         # https://github.com/AlDanial/cloc
         "cloc",
         [],

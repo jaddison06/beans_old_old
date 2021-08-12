@@ -18,7 +18,7 @@ class Parser:
         
         out = ParsedGenFile(
             self.fname,
-            [], [], [], [], []
+            [], [], [], []
         )
 
         skip = 0
@@ -39,19 +39,8 @@ class Parser:
 
                 continue
             
-            if line.startswith("struct"):
-                raise ValueError("Structs aren't a thing anymore, fuck off")
-                struct = self.get_part(contents, i)
-                out.structs.append(
-                    self.parse_struct(
-                        struct,
-                        annotations
-                    )
-                )
-                annotations = []
-                skip = len(struct) - 1
-
-            elif line.startswith("enum"):
+            
+            if line.startswith("enum"):
                 enum = self.get_part(contents, i)
                 out.enums.append(
                     self.parse_enum(
@@ -123,10 +112,23 @@ class Parser:
             is_pointer
         ), name
 
+    #* ALL PARSE FUNCTIONS NEED TO MAKE SURE THEY CAN ACCEPT LINES WITH A COMMENT AT THE END:
+    # void some_code() // this code does something!!
+
+    def normalize(self, line: str, ensure_newline: bool = False) -> str:
+        if '//' in line:
+            line = line.split('//')[0].strip()
+        if (not line.endswith('\n')) and ensure_newline:
+            line += '\n'
+        elif line.endswith('\n') and (not ensure_newline):
+            line = line[:-1]
+        
+        return line
+
     def parse_annotation(self, annotation: str) -> CodegenAnnotation:
         assert "(" in annotation, "Annotations must end with parentheses, even if they have no arguments."
-        if not annotation.endswith("\n"):
-            annotation += "\n"
+        
+        annotation = self.normalize(annotation, True)
 
         name, args_raw = annotation[1:].split("(")
         args: list[str] = []
@@ -141,15 +143,15 @@ class Parser:
 
     
     def parse_function(self, function: str, annotations: list[CodegenAnnotation]) -> CodegenFunction:
-        if not function.endswith("\n"): function += "\n"
+        function = self.normalize(function, True)
 
         name_and_return_type, params_raw = function.split("(")
 
         return_type, name = self.to_codegen_type(name_and_return_type)
         
         params: dict[str, CodegenType] = {}
-        if not params_raw == ");\n":
-            for param in params_raw[:-3].split(","):
+        if not params_raw == ")\n":
+            for param in params_raw[:-2].split(","):
                 param_type, param_name = self.to_codegen_type(param.strip())
                 params[param_name] = param_type
         
@@ -159,51 +161,6 @@ class Parser:
             params,
             annotations
         )
-
-
-    # struct can contain:
-    #   - whitespace
-    #   - comments
-    #   - members
-    #   - annotations for members
-    def parse_struct(self, struct: list[str], annotations: list[CodegenAnnotation]) -> CodegenStruct:
-        name = self.get_structure_name("struct", struct[0])
-        # we don't want the first or last line
-        contents = struct[1:-1]
-
-        out = CodegenStruct(name, [], annotations)
-
-        current_annotations: list[CodegenAnnotation] = []
-        for line in strip_all(contents):
-            if line.startswith("//"):
-                continue
-            
-            if line == '':
-                if len(current_annotations) > 0:
-                    raise ValueError(
-                        f"Whitespace after annotations in a struct - which member do these annotations apply to?\n{current_annotations}\n" + 
-                        "To apply annotations to the whole struct, place them directly before the struct definition."
-                    )
-                continue
-            
-            if line.startswith("@"):
-                current_annotations.append(
-                    self.parse_annotation(line)
-                )
-            
-            else:
-                field_type, field_name = self.to_codegen_type(line[:-1])
-                out.fields.append(
-                    CodegenDataStructureField(
-                        field_name,
-                        field_type,
-                        current_annotations
-                    )
-                )
-                current_annotations = []
-        
-        return out
-            
 
     def parse_enum(self, enum: list[str], annotations: list[CodegenAnnotation]) -> CodegenEnum:
         name = self.get_structure_name("enum", enum[0])
@@ -258,13 +215,14 @@ class Parser:
                 continue
                 
             if line == '':
-                # p much copy-pasted from the parse_struct version
                 if len(current_annotations) > 0:
                     raise ValueError(
                         f"Whitespace after annotations in a class - what do these annotations apply to?\n{current_annotations}\n" + 
                         "To apply annotations to the whole class, place them directly before the class definition."
                     )
                 continue
+                
+            line = self.normalize(line)
 
 
             if line.startswith('@'):
@@ -273,12 +231,8 @@ class Parser:
                 )
                 # not using elifs off this bc of the semicolon check
                 continue
-            else:
-                # can't check endswith(');') if there isn't a semicolon
-                # also unconditionally removing the last char of a field line
-                assert line.endswith(';'), 'get ur semicolons sorted out dickhead'
             
-            if line.endswith(');'):
+            if line.endswith(')'):
                 # method
                 method = self.parse_function(line, current_annotations)
                 for param in method.params:
@@ -292,7 +246,7 @@ class Parser:
                 )
                 current_annotations = []
             else:
-                raise ValueError("Class fields aren't supported, what the fuck do you think i am, a miracle worker?")
+                raise ValueError("Class fields aren't supported yet, what the fuck do you think i am, a miracle worker?")
                 field_type, field_name = self.to_codegen_type(line[:-1])
                 # it's a field. probably.
                 out.fields.append(

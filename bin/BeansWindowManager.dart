@@ -121,9 +121,8 @@ enum BeansWindowLayoutMode {
 
 // todo:
 //   - Replace all uses of idx with the actual candidate - they're mutable
-//   - Create a class for a collection & calculate window positions dynamically - this gets rid of the rounding error
-//     where windows would be 1 or 2 pixels too small.
 //   - Decorations (needs text rendering)
+//   - Remove dead code
 /// BeansWindowManager is responsible for:
 /// - Rendering [BeansWindow]s
 /// - Turning the raw [Event]s from SDL into a more usable format

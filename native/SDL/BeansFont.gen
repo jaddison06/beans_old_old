@@ -2,14 +2,14 @@
 
 class BeansFont {
     @Initializer()
-    void* InitFont(char* name, int size);
+    void* InitFont(char* name, int size)
 
     @Invalidates()
     @Show(Destroy)
-    void DestroyFont();
+    void DestroyFont()
 
     @Getter(name)
-    char* BFGetName();
+    char* BFGetName()
     @Getter(size)
-    int BFGetSize();
+    int BFGetSize()
 }

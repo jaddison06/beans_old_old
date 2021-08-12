@@ -193,21 +193,6 @@ def funcs(file: ParsedGenFile) -> str:
     if len(file.functions) == 0: return out
 
     out += banner("function signature typedefs")
-    # for func in file.functions:
-    #     out += f"// {func.signature_string()}\n"
-    #     out += f"typedef {func_sig_name(file, func.name, True)} = {get_typename(func.return_type, NATIVE)} Function("
-    #     for i, param_type in enumerate(func.params.values()):
-    #         out += get_typename(param_type, NATIVE)
-    #         if i != len(func.params) - 1:
-    #             out += ", "
-    #     out += ");\n"
-
-    #     out += f"typedef {func_sig_name(file, func.name, False)} = {get_typename(func.return_type, DART)} Function("
-    #     for i, param_type in enumerate(func.params.values()):
-    #         out += get_typename(param_type, DART)
-    #         if i!= len(func.params) - 1:
-    #             out += ", "
-    #     out += ");\n\n"
     out += func_typedefs(file.functions, lambda func, is_native: func_sig_name(file, func.name, is_native))
     
     out += banner(file.libname())
@@ -219,28 +204,12 @@ def funcs(file: ParsedGenFile) -> str:
    
     out += func_class_get_library(file)
 
-    # for func in file.functions:
-    #     out += f"        _{func.name} = lib.lookupFunction<{func_sig_name(file, func.name, True)}, {func_sig_name(file, func.name, False)}>('{func.name}');\n"
+
     out += func_class_init_refs(file.functions, lambda func, is_native: func_sig_name(file, func.name, is_native))
     out += "    }\n\n"
 
     for func in file.functions:
         out += f"    {func_class_func_return_type(func)} {func.name}("
-        # for i, param_name in enumerate(func.params):
-        #     param_type = func.params[param_name]
-        #     dart_type = get_typename(param_type, DART)
-
-        #     # THIS IS WHERE STUFF FOR ENUMS, STRUCTS, ETC WILL GO !!!
-        #     if dart_type == "Pointer<Utf8>":
-        #         dart_type = "String"
-        #     elif lookup.is_enum(param_type.typename):
-        #         dart_type = param_type.typename
-            
-        #     out += f"{dart_type} {param_name}"
-        #     if i != len(func.params) - 1:
-        #         out += ", "
-            
-        #out += ") {\n"
 
         out += param_list(func)
 
@@ -267,7 +236,7 @@ def enums(file: ParsedGenFile) -> str:
         for value in enum.values:
             out += f"    {value.name},\n"
         out += "}\n\n"
-        #'''
+        
         out += f"{enum.name} {enum.name}FromInt(int val) => {enum.name}.values[val];\n"
         out += f"int {enum.name}ToInt({enum.name} val) => {enum.name}.values.indexOf(val);\n\n"
         out += f"String {enum.name}ToString({enum.name} val) {{\n"
@@ -276,25 +245,8 @@ def enums(file: ParsedGenFile) -> str:
             out += f"        case {enum.name}.{value.name}: {{ return '{value.stringify_as}'; }}\n"
         out += "    }\n"
         out += "}\n\n"
-        #'''
-        # not using an extension because you can't override toString() and I want it to be all or nothing
-        '''
-        out += f"extension on {enum.name} {{\n"
-        out += f"    static {enum.name} fromInt(int val) => {enum.name}.values[val];\n"
-        out += f"    int toInt() => {enum.name}.values.indexOf(this);\n\n"
-        out +=  "    @override\n"
-        out +=  "    String toString() {\n"
-        out +=  "        switch (this) {\n"
-        for value in enum.values:
-            out += f"            case {enum.name}.{value.name}: {{return '{value.stringify_as}'; }}\n"
-        out += "        }\n"
-        out += "    }\n"
-        out += "}\n\n"
-        '''
 
     return out
-
-def structs(file: ParsedGenFile) -> str: return ""
 
 def classes(file: ParsedGenFile) -> str:
     out: str = ""
@@ -376,11 +328,6 @@ def classes(file: ParsedGenFile) -> str:
 
     return out
 
-# todo:
-#   - structs are cancelled so we don't need to worry about them
-#   - classes
-#   - printf does not fuck?????????
-#   - start testing libe131
 
 def codegen(files: list[ParsedGenFile]) -> str:
     out = ""
@@ -398,7 +345,6 @@ import 'package:ffi/ffi.dart';
         out += banner(f"file: {file.name}")
         out += funcs(file)
         out += enums(file)
-        out += structs(file)
         out += classes(file)
 
     return out
