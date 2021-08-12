@@ -35,4 +35,10 @@ class BeansRenderWindow extends RenderWindow {
       lineY += font.GetTextHeight(line);
     }
   }
+
+  // for the default scale
+  // todo: i really need to implement default parameters in codegen
+  void DrawImage(Image image, int x, int y, [double scale = 1]) {
+    cDrawImage(image, x, y, scale);
+  }
 }

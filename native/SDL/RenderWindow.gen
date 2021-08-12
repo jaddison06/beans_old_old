@@ -36,4 +36,7 @@ class RenderWindow {
 
     @Show(cDrawText) // we're going to create a sexier version at the Dart level called DrawText
     void DrawText(BeansFont* font, char* text, int x, int y, int r, int g, int b, int a)
+
+    @Show(cDrawImage)
+    void DrawImage(Image* image, int x, int y, double scale)
 }

@@ -82,6 +82,10 @@ typedef _libRenderWindow_class_RenderWindow_method_FillRect_sig = void Function(
 typedef _libRenderWindow_class_RenderWindow_method_DrawText_native_sig = Void Function(Pointer<Void>, Pointer<Void>, Pointer<Utf8>, Int32, Int32, Int32, Int32, Int32, Int32);
 typedef _libRenderWindow_class_RenderWindow_method_DrawText_sig = void Function(Pointer<Void>, Pointer<Void>, Pointer<Utf8>, int, int, int, int, int, int);
 
+// void DrawImage(void* struct_ptr, Image* image, int x, int y, double scale)
+typedef _libRenderWindow_class_RenderWindow_method_DrawImage_native_sig = Void Function(Pointer<Void>, Pointer<Void>, Int32, Int32, Double);
+typedef _libRenderWindow_class_RenderWindow_method_DrawImage_sig = void Function(Pointer<Void>, Pointer<Void>, int, int, double);
+
 // ----------CLASS IMPLEMENTATIONS----------
 
 class RenderWindow {
@@ -105,6 +109,7 @@ class RenderWindow {
     static _libRenderWindow_class_RenderWindow_method_DrawRect_sig? _DrawRect;
     static _libRenderWindow_class_RenderWindow_method_FillRect_sig? _FillRect;
     static _libRenderWindow_class_RenderWindow_method_DrawText_sig? _DrawText;
+    static _libRenderWindow_class_RenderWindow_method_DrawImage_sig? _DrawImage;
 
     void _initRefs() {
         if (
@@ -119,7 +124,8 @@ class RenderWindow {
             _DrawLine == null ||
             _DrawRect == null ||
             _FillRect == null ||
-            _DrawText == null
+            _DrawText == null ||
+            _DrawImage == null
         ) {
             final lib = DynamicLibrary.open('build/native/SDL/libRenderWindow.so');
 
@@ -135,6 +141,7 @@ class RenderWindow {
             _DrawRect = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DrawRect_native_sig, _libRenderWindow_class_RenderWindow_method_DrawRect_sig>('DrawRect');
             _FillRect = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_FillRect_native_sig, _libRenderWindow_class_RenderWindow_method_FillRect_sig>('FillRect');
             _DrawText = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DrawText_native_sig, _libRenderWindow_class_RenderWindow_method_DrawText_sig>('DrawText');
+            _DrawImage = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DrawImage_native_sig, _libRenderWindow_class_RenderWindow_method_DrawImage_sig>('DrawImage');
         }
     }
 
@@ -207,6 +214,11 @@ class RenderWindow {
     void cDrawText(BeansFont font, String text, int x, int y, int r, int g, int b, int a) {
         _validatePointer('cDrawText');
         return _DrawText!(structPointer, font.structPointer, text.toNativeUtf8(), x, y, r, g, b, a);
+    }
+
+    void cDrawImage(Image image, int x, int y, double scale) {
+        _validatePointer('cDrawImage');
+        return _DrawImage!(structPointer, image.structPointer, x, y, scale);
     }
 
 }
@@ -330,6 +342,93 @@ class BeansFont {
     int get size {
         _validatePointer('size');
         return _BFGetSize!(structPointer);
+    }
+
+}
+
+// ----------FILE: NATIVE/SDL/IMAGE.GEN----------
+
+// ----------FUNC SIG TYPEDEFS FOR CLASSES----------
+
+// ----------IMAGE----------
+
+// void* InitImage(RenderWindow* rw, char* fname)
+typedef _libImage_class_Image_method_InitImage_native_sig = Pointer<Void> Function(Pointer<Void>, Pointer<Utf8>);
+typedef _libImage_class_Image_method_InitImage_sig = Pointer<Void> Function(Pointer<Void>, Pointer<Utf8>);
+
+// void DestroyImage(void* struct_ptr)
+typedef _libImage_class_Image_method_DestroyImage_native_sig = Void Function(Pointer<Void>);
+typedef _libImage_class_Image_method_DestroyImage_sig = void Function(Pointer<Void>);
+
+// int ImageGetWidth(void* struct_ptr)
+typedef _libImage_class_Image_method_ImageGetWidth_native_sig = Int32 Function(Pointer<Void>);
+typedef _libImage_class_Image_method_ImageGetWidth_sig = int Function(Pointer<Void>);
+
+// int ImageGetHeight(void* struct_ptr)
+typedef _libImage_class_Image_method_ImageGetHeight_native_sig = Int32 Function(Pointer<Void>);
+typedef _libImage_class_Image_method_ImageGetHeight_sig = int Function(Pointer<Void>);
+
+// ----------CLASS IMPLEMENTATIONS----------
+
+class Image {
+    Pointer<Void> structPointer = nullptr;
+
+    void _validatePointer(String methodName) {
+        if (structPointer.address == 0) {
+            throw Exception('Image.$methodName was called, but structPointer is a nullptr.');
+        }
+    }
+
+    static _libImage_class_Image_method_InitImage_sig? _InitImage;
+    static _libImage_class_Image_method_DestroyImage_sig? _DestroyImage;
+    static _libImage_class_Image_method_ImageGetWidth_sig? _ImageGetWidth;
+    static _libImage_class_Image_method_ImageGetHeight_sig? _ImageGetHeight;
+
+    void _initRefs() {
+        if (
+            _InitImage == null ||
+            _DestroyImage == null ||
+            _ImageGetWidth == null ||
+            _ImageGetHeight == null
+        ) {
+            final lib = DynamicLibrary.open('build/native/SDL/libImage.so');
+
+            _InitImage = lib.lookupFunction<_libImage_class_Image_method_InitImage_native_sig, _libImage_class_Image_method_InitImage_sig>('InitImage');
+            _DestroyImage = lib.lookupFunction<_libImage_class_Image_method_DestroyImage_native_sig, _libImage_class_Image_method_DestroyImage_sig>('DestroyImage');
+            _ImageGetWidth = lib.lookupFunction<_libImage_class_Image_method_ImageGetWidth_native_sig, _libImage_class_Image_method_ImageGetWidth_sig>('ImageGetWidth');
+            _ImageGetHeight = lib.lookupFunction<_libImage_class_Image_method_ImageGetHeight_native_sig, _libImage_class_Image_method_ImageGetHeight_sig>('ImageGetHeight');
+        }
+    }
+
+    Image(RenderWindow rw, String fname) {
+        _initRefs();
+        structPointer = _InitImage!(rw.structPointer, fname.toNativeUtf8());
+    }
+
+    Image.fromPointer(Pointer<Void> ptr) {
+        _initRefs();
+        structPointer = ptr;
+    }
+
+    @mustCallSuper
+    void DestroyImage() {
+        _validatePointer('DestroyImage');
+        final out = _DestroyImage!(structPointer);
+
+        // this method invalidates the pointer, probably by freeing memory
+        structPointer = Pointer.fromAddress(0);
+
+        return out;
+    }
+
+    int get width {
+        _validatePointer('width');
+        return _ImageGetWidth!(structPointer);
+    }
+
+    int get height {
+        _validatePointer('height');
+        return _ImageGetHeight!(structPointer);
     }
 
 }

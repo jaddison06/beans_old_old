@@ -1,16 +1,10 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
+#include "RenderWindow.h"
 #include "native/c_codegen.h"
 #include "BeansFont.h"
-
-typedef struct {
-    SDL_Window* win;
-    SDL_Renderer* ren;
-    SDLInitCode errorCode;
-
-    int frameCount;
-} RenderWindow;
+#include "Image.h"
 
 int RWGetFrameCount(RenderWindow* rw) {
     return rw->frameCount;
@@ -171,4 +165,8 @@ void DrawText(RenderWindow* rw, BeansFont* font, char* text, int x, int y, int r
     SDL_Texture* textTexture = GetTextTexture(rw, font->font, text, r, g, b, a, &width, &height);
     RenderTexture(rw, textTexture, x, y, width, height);
     SDL_DestroyTexture(textTexture);
+}
+
+void DrawImage(RenderWindow* rw, Image* image, int x, int y, double scale) {
+    RenderTexture(rw, image->imageTexture, x, y, image->width * scale, image->height * scale);
 }

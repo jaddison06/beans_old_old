@@ -3,6 +3,8 @@
         "numberstorage.h": "c",
         "libtest.h": "c",
         "c_codegen.h": "c",
-        "sdl.h": "c"
+        "sdl.h": "c",
+        "image.h": "c",
+        "renderwindow.h": "c"
     }
 }

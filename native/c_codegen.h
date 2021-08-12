@@ -18,6 +18,8 @@ typedef enum {
 
 // ----------NATIVE/SDL/BEANSFONT.GEN----------
 
+// ----------NATIVE/SDL/IMAGE.GEN----------
+
 // ----------NATIVE/SDL/EVENT.GEN----------
 
 typedef enum {

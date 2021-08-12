@@ -2,7 +2,7 @@
 
 all: codegen libraries
 
-libraries: build/native/SDL/libRenderWindow.so build/native/SDL/libBeansFont.so build/native/SDL/libEvent.so
+libraries: build/native/SDL/libRenderWindow.so build/native/SDL/libBeansFont.so build/native/SDL/libImage.so build/native/SDL/libEvent.so
 
 codegen:
 	python codegen/main.py
@@ -25,6 +25,10 @@ build/native/SDL/libRenderWindow.so: native/SDL/RenderWindow.c
 build/native/SDL/libBeansFont.so: native/SDL/BeansFont.c
 	mkdir -p build/native/SDL
 	gcc -shared -o build/native/SDL/libBeansFont.so -fPIC -I. native/SDL/BeansFont.c -lSDL2_ttf
+
+build/native/SDL/libImage.so: native/SDL/Image.c
+	mkdir -p build/native/SDL
+	gcc -shared -o build/native/SDL/libImage.so -fPIC -I. native/SDL/Image.c -lSDL2 -lSDL2_image
 
 build/native/SDL/libEvent.so: native/SDL/Event.c
 	mkdir -p build/native/SDL

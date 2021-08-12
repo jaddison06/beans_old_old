@@ -150,6 +150,8 @@ class BeansWindowManager extends XYPointer with CatchAll {
 
   String? panicMsg;
 
+  late final Image _forgor;
+
   final List<Collection> _windows = [];
   
   int get _windowCount => _windows.map((collection) => collection.windows.length).sum();
@@ -184,6 +186,9 @@ class BeansWindowManager extends XYPointer with CatchAll {
       event: _event,
       onError: gpanic
     );
+
+    _forgor = Image(_rw, 'res/forgor.jpg');
+
     _testWindows.addAll([
       ColourWindow(
         minWidth: 69,
@@ -668,16 +673,17 @@ class BeansWindowManager extends XYPointer with CatchAll {
       // that badly wrong we can tell the renderer to stop handling our error and just pass it up, which will lead to
       // Beans._panic() and a clean-ish program exit.
       catchAll(() {
-        rw.DrawText(panicMsg!, 0, 0, 255, 0, 0);
+        rw.DrawImage(_forgor, 0, 0);
+        rw.DrawText(panicMsg!, 0, _forgor.height, 255, 0, 0);
       }, (e, trace) {
         _ren.handleErrors = false;
       });
       return;
     }
+    throw Exception('Null check operator used on a null value');
     _forEachCollectionWithCrossPos((collection, crossPos) {
       collection.render(rw, crossPos);
     });
-    rw.DrawText('DEEZ NUTSSSSSSS', 15, 15, 0, 0, 0);
   }
 
   /// update the focused window based on [_x] and [_y]

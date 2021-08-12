@@ -1,0 +1,15 @@
+@LinkWithLib(SDL2)
+@LinkWithLib(SDL2_image)
+
+class Image {
+    @Initializer()
+    void* InitImage(RenderWindow* rw, char* fname)
+
+    @Invalidates()
+    void DestroyImage()
+
+    @Getter(width)
+    int ImageGetWidth()
+    @Getter(height)
+    int ImageGetHeight()
+}
