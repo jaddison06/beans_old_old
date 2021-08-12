@@ -52,6 +52,21 @@ class WindowData {
 
 /// A row or column of windows
 class Collection extends XYPointer {
+  static int _instanceCount = 0;
+
+  final int _id;
+
+  Collection() :
+    _id = _instanceCount {
+      _instanceCount ++;
+    }
+  
+  @override
+  bool operator == (Object other) {
+    if (other.runtimeType != Collection) return false;
+    return (other as Collection)._id == _id;
+  }
+
   final windows = <WindowData>[];
 
   bool get isColumns => BeansWindowManager.layoutMode == BeansWindowLayoutMode.Columns;
@@ -274,8 +289,7 @@ class BeansWindowManager extends XYPointer {
 
   /// Calculates x, y, width, height and initializes the [WindowData]. Assumes that resizing of other windows
   /// has already been done, and that it is **not** a floating window.
-  void addWindowToCollection(BeansWindow win, int collectionIdx, {required int mainSize_, required int crossSize_, bool focus = true}) {
-    final collection = _windows[collectionIdx];
+  void addWindowToCollection(BeansWindow win, Collection collection, {required int mainSize_, required int crossSize_, bool focus = true}) {
     collection.windows.add(
       WindowData(
         width: isColumns ? crossSize_ : mainSize_,
@@ -289,42 +303,40 @@ class BeansWindowManager extends XYPointer {
 
   bool get isColumns => layoutMode == BeansWindowLayoutMode.Columns;
 
-  /// Check if resizing the collection at [collectionIdx] to [newCrossSize] would cause the layout to overflow.
-  bool wouldOverflow(int collectionIdx, int newCrossSize) {
+  /// Check if resizing [collectionToResize] to [newCrossSize] would cause the layout to overflow.
+  bool wouldOverflow(Collection collectionToResize, int newCrossSize) {
     final totalCrossSize = totalCrossAxisSize();
     var sum = 0;
-    for (var i=0; i<_windows.length; i++) {
-      if (i == collectionIdx) {
+    for (var collection in _windows) {
+      if (collection == collectionToResize) {
         sum += newCrossSize;
       } else {
-        sum += minPossibleCrossSize(_windows[i]);
+        sum += minPossibleCrossSize(collection);
       }
     }
     return sum > totalCrossSize;
   }
 
-  /// Resize all collections so that the collection at [collectionIdx] has a crossSize of [newCrossSize].
+  /// Resize all collections so that [collection] has a crossSize of [newCrossSize].
   /// 
   /// Similarly to [addState2], all other collections are scaled so that either they're at the same size relative to each
   /// other, or they're at their minimum size. Assumes that doing so won't overflow the layout.
-  void resizeCollections(int collectionIdx, int newCrossSize) {
+  void resizeCollections(Collection collection, int newCrossSize) {
     // total cross axis size of the whole layout
     final totalCrossSize = totalCrossAxisSize();
-    final collection = _windows[collectionIdx];
     // previous crossSize of the collection
     final oldCrossSize = collection.windows.isEmpty ? 0 : crossSize(collection.windows.last);
     // ratio to reduce/increase the size of all other collections by.
     //! this must be a double
     final ratio = (totalCrossSize - (newCrossSize - oldCrossSize)) / totalCrossSize;
 
-    for (var i=0; i<_windows.length; i++) {
-      final modifyCollection = _windows[i];
-      if (i == collectionIdx) {
+    for (var modifyCollection in _windows) {
+      if (modifyCollection == collection) {
         // resize the selected collection to newCrossSize
-        _windows[i].setCrossSize(newCrossSize);
+        modifyCollection.setCrossSize(newCrossSize);
       } else {
         // resize the collection to either its current size * the ratio, or its mininum size, whichever is bigger.
-        _windows[i].setCrossSize(
+        modifyCollection.setCrossSize(
           max(
             (crossSize(modifyCollection.windows.last) * ratio).toInt(),
             minPossibleCrossSize(modifyCollection)
@@ -337,10 +349,9 @@ class BeansWindowManager extends XYPointer {
 
   /// If the window's [minCrossSize] is smaller than the collection's [crossSize], resize the collection to accommodate the
   /// window. Assumes that doing so won't overflow the layout.
-  void resizeIfNeeded(int collectionIdx, BeansWindow win) {
-    final collection = _windows[collectionIdx];
+  void resizeIfNeeded(Collection collection, BeansWindow win) {
     if (minCrossSize(win) > crossSize(collection.windows.last)) {
-      resizeCollections(collectionIdx, minCrossSize(win));
+      resizeCollections(collection, minCrossSize(win));
     }
   }
 
@@ -421,16 +432,15 @@ class BeansWindowManager extends XYPointer {
 
   /// Add a window to a collection using State 1 rules. Assumes that there is enough space, and that this won't cause the
   /// layout to overflow.
-  void addState1(BeansWindow win, int collectionIdx) {
-    final collection = _windows[collectionIdx];
+  void addState1(BeansWindow win, Collection collection) {
     // Gap between the two windows if they were both at their minMainSize
     final gap = mainSize(collection.windows.last) - (minMainSize(collection.windows.last.window) + minMainSize(win));
     /// resize the current final window
     setMainSize(collection.windows.last, minMainSize(collection.windows.last.window) + (gap ~/ 2));
-    resizeIfNeeded(collectionIdx, win);
+    resizeIfNeeded(collection, win);
     addWindowToCollection(
       win,
-      collectionIdx,
+      collection,
       /*mainPos: offsetEnd(collection.last),
       crossPos: alignedStart(collection.last),*/
       mainSize_: minMainSize(win) + (gap ~/ 2),
@@ -440,8 +450,7 @@ class BeansWindowManager extends XYPointer {
 
   /// Add a window to a collection using State 2 rules. Assumes that there is enough space, and that this won't cause the
   /// layout to overflow.
-  void addState2(BeansWindow win, int collectionIdx) {
-    final collection = _windows[collectionIdx];
+  void addState2(BeansWindow win, Collection collection) {
     final currentMainSize = totalMainAxisSize();
     //! must be a double
     final ratio = (currentMainSize - minMainSize(win)) / currentMainSize;
@@ -453,10 +462,10 @@ class BeansWindowManager extends XYPointer {
         )
       );
     }
-    resizeIfNeeded(collectionIdx, win);
+    resizeIfNeeded(collection, win);
     addWindowToCollection(
       win,
-      collectionIdx,
+      collection,
       /*mainPos: offsetEnd(collection.last),
       crossPos: alignedStart(collection.last),*/
       mainSize_: minMainSize(win),
