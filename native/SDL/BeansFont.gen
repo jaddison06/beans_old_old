@@ -8,6 +8,15 @@ class BeansFont {
     @Show(Destroy)
     void DestroyFont()
 
+    void GetTextSize(char* text, int* width, int* height)
+
+    // kinda hacky
+    // basically, BeansRenderWindow can't use XYPointer bc it already extends RenderWindow.
+    // it only actually needs to get the text height anyway, so i might as well duplicate the
+    // C code that gets the size in order to have slightly neater Dart.
+    int GetTextWidth(char* text)
+    int GetTextHeight(char* text)
+
     @Getter(name)
     char* BFGetName()
     @Getter(size)

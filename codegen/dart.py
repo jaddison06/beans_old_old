@@ -289,7 +289,7 @@ def classes(file: ParsedGenFile) -> str:
     out += banner("class implementations")
     for class_ in file.classes:
         out += f"class {class_.name} {{\n"
-        out +=  "    Pointer<Void> structPointer = Pointer.fromAddress(0);\n\n"
+        out +=  "    Pointer<Void> structPointer = nullptr;\n\n"
         out +=  "    void _validatePointer(String methodName) {\n"
         out +=  "        if (structPointer.address == 0) {\n"
         out += f"            throw Exception('{class_.name}.$methodName was called, but structPointer is a nullptr.');\n"
@@ -332,11 +332,12 @@ def classes(file: ParsedGenFile) -> str:
                 out += getter.args[0]
                 out += " {\n"
 
-            else:                
+            else:
+                if has_annotation(method.annotations, "Invalidates"):
+                    out += "    @mustCallSuper\n"
                 out += f"    {func_class_func_return_type(method)} {method.display_name()}("
                 out += param_list(method)
 
-            # todo: call validatePointer using the method's user-facing name, not the C name.
             out += f"        _validatePointer('{method.display_name()}');\n"
             get_return_value = f"_{method.name}!(structPointer"
             if len(method.params) > 0:
@@ -364,9 +365,12 @@ def classes(file: ParsedGenFile) -> str:
 def codegen(files: list[ParsedGenFile]) -> str:
     out = ""
     out += \
-"""import 'dart:ffi';
+"""// for native types & basic FFI functionality
+import 'dart:ffi';
+// for string utils
 import 'package:ffi/ffi.dart';
-
+// for @mustCallSuper
+import 'package:meta/meta.dart';
 
 """
 

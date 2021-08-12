@@ -1,20 +1,21 @@
 import 'dart_codegen.dart';
+import 'BeansRenderWindow.dart';
 
-/// BeansRenderer is the main class used to interface with the C [RenderWindow]
+/// BeansRenderer is the main class used to interface with the C in [BeansRenderWindow]
 /// from Dart code. It takes care of the event loop & makes sure the window
 /// is painted and cleared properly. It is **not** responsible for cleaning up
-/// the [RenderWindow]`
+/// the [BeansRenderWindow]`
 class BeansRenderer {
-  final RenderWindow rw;
+  final BeansRenderWindow rw;
   final Event _event;
 
   bool _shouldQuit = false;
 
-  final void Function(RenderWindow) render;
+  final void Function(BeansRenderWindow) render;
   final void Function(Event) event;
 
-  /// [rw] is the [RenderWindow] that will be used for rendering.
-  /// [render] is a callback that should draw graphics to the [RenderWindow]. It should **not** call [RenderWindow.Flush].
+  /// [rw] is the [BeansRenderWindow] that will be used for rendering.
+  /// [render] is a callback that should draw graphics to the [BeansRenderWindow]. It should **not** call [BeansRenderWindow.Flush].
   /// [event] is a callback that should handle events that occur. [BeansRenderer] takes care of polling events every frame,
   /// so the caller only needs to process the event that is passed to them.
   BeansRenderer({

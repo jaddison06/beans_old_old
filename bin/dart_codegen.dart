@@ -1,6 +1,9 @@
+// for native types & basic FFI functionality
 import 'dart:ffi';
+// for string utils
 import 'package:ffi/ffi.dart';
-
+// for @mustCallSuper
+import 'package:meta/meta.dart';
 
 // ----------FILE: NATIVE/SDL/RENDERWINDOW.GEN----------
 
@@ -82,7 +85,7 @@ typedef _libRenderWindow_class_RenderWindow_method_DrawText_sig = void Function(
 // ----------CLASS IMPLEMENTATIONS----------
 
 class RenderWindow {
-    Pointer<Void> structPointer = Pointer.fromAddress(0);
+    Pointer<Void> structPointer = nullptr;
 
     void _validatePointer(String methodName) {
         if (structPointer.address == 0) {
@@ -145,6 +148,7 @@ class RenderWindow {
         structPointer = ptr;
     }
 
+    @mustCallSuper
     void Destroy() {
         _validatePointer('Destroy');
         final out = _DestroyRenderWindow!(structPointer);
@@ -221,6 +225,18 @@ typedef _libBeansFont_class_BeansFont_method_InitFont_sig = Pointer<Void> Functi
 typedef _libBeansFont_class_BeansFont_method_DestroyFont_native_sig = Void Function(Pointer<Void>);
 typedef _libBeansFont_class_BeansFont_method_DestroyFont_sig = void Function(Pointer<Void>);
 
+// void GetTextSize(void* struct_ptr, char* text, int* width, int* height)
+typedef _libBeansFont_class_BeansFont_method_GetTextSize_native_sig = Void Function(Pointer<Void>, Pointer<Utf8>, Pointer<Int32>, Pointer<Int32>);
+typedef _libBeansFont_class_BeansFont_method_GetTextSize_sig = void Function(Pointer<Void>, Pointer<Utf8>, Pointer<Int32>, Pointer<Int32>);
+
+// int GetTextWidth(void* struct_ptr, char* text)
+typedef _libBeansFont_class_BeansFont_method_GetTextWidth_native_sig = Int32 Function(Pointer<Void>, Pointer<Utf8>);
+typedef _libBeansFont_class_BeansFont_method_GetTextWidth_sig = int Function(Pointer<Void>, Pointer<Utf8>);
+
+// int GetTextHeight(void* struct_ptr, char* text)
+typedef _libBeansFont_class_BeansFont_method_GetTextHeight_native_sig = Int32 Function(Pointer<Void>, Pointer<Utf8>);
+typedef _libBeansFont_class_BeansFont_method_GetTextHeight_sig = int Function(Pointer<Void>, Pointer<Utf8>);
+
 // char* BFGetName(void* struct_ptr)
 typedef _libBeansFont_class_BeansFont_method_BFGetName_native_sig = Pointer<Utf8> Function(Pointer<Void>);
 typedef _libBeansFont_class_BeansFont_method_BFGetName_sig = Pointer<Utf8> Function(Pointer<Void>);
@@ -232,7 +248,7 @@ typedef _libBeansFont_class_BeansFont_method_BFGetSize_sig = int Function(Pointe
 // ----------CLASS IMPLEMENTATIONS----------
 
 class BeansFont {
-    Pointer<Void> structPointer = Pointer.fromAddress(0);
+    Pointer<Void> structPointer = nullptr;
 
     void _validatePointer(String methodName) {
         if (structPointer.address == 0) {
@@ -242,6 +258,9 @@ class BeansFont {
 
     static _libBeansFont_class_BeansFont_method_InitFont_sig? _InitFont;
     static _libBeansFont_class_BeansFont_method_DestroyFont_sig? _DestroyFont;
+    static _libBeansFont_class_BeansFont_method_GetTextSize_sig? _GetTextSize;
+    static _libBeansFont_class_BeansFont_method_GetTextWidth_sig? _GetTextWidth;
+    static _libBeansFont_class_BeansFont_method_GetTextHeight_sig? _GetTextHeight;
     static _libBeansFont_class_BeansFont_method_BFGetName_sig? _BFGetName;
     static _libBeansFont_class_BeansFont_method_BFGetSize_sig? _BFGetSize;
 
@@ -249,6 +268,9 @@ class BeansFont {
         if (
             _InitFont == null ||
             _DestroyFont == null ||
+            _GetTextSize == null ||
+            _GetTextWidth == null ||
+            _GetTextHeight == null ||
             _BFGetName == null ||
             _BFGetSize == null
         ) {
@@ -256,6 +278,9 @@ class BeansFont {
 
             _InitFont = lib.lookupFunction<_libBeansFont_class_BeansFont_method_InitFont_native_sig, _libBeansFont_class_BeansFont_method_InitFont_sig>('InitFont');
             _DestroyFont = lib.lookupFunction<_libBeansFont_class_BeansFont_method_DestroyFont_native_sig, _libBeansFont_class_BeansFont_method_DestroyFont_sig>('DestroyFont');
+            _GetTextSize = lib.lookupFunction<_libBeansFont_class_BeansFont_method_GetTextSize_native_sig, _libBeansFont_class_BeansFont_method_GetTextSize_sig>('GetTextSize');
+            _GetTextWidth = lib.lookupFunction<_libBeansFont_class_BeansFont_method_GetTextWidth_native_sig, _libBeansFont_class_BeansFont_method_GetTextWidth_sig>('GetTextWidth');
+            _GetTextHeight = lib.lookupFunction<_libBeansFont_class_BeansFont_method_GetTextHeight_native_sig, _libBeansFont_class_BeansFont_method_GetTextHeight_sig>('GetTextHeight');
             _BFGetName = lib.lookupFunction<_libBeansFont_class_BeansFont_method_BFGetName_native_sig, _libBeansFont_class_BeansFont_method_BFGetName_sig>('BFGetName');
             _BFGetSize = lib.lookupFunction<_libBeansFont_class_BeansFont_method_BFGetSize_native_sig, _libBeansFont_class_BeansFont_method_BFGetSize_sig>('BFGetSize');
         }
@@ -271,6 +296,7 @@ class BeansFont {
         structPointer = ptr;
     }
 
+    @mustCallSuper
     void Destroy() {
         _validatePointer('Destroy');
         final out = _DestroyFont!(structPointer);
@@ -279,6 +305,21 @@ class BeansFont {
         structPointer = Pointer.fromAddress(0);
 
         return out;
+    }
+
+    void GetTextSize(String text, Pointer<Int32> width, Pointer<Int32> height) {
+        _validatePointer('GetTextSize');
+        return _GetTextSize!(structPointer, text.toNativeUtf8(), width, height);
+    }
+
+    int GetTextWidth(String text) {
+        _validatePointer('GetTextWidth');
+        return _GetTextWidth!(structPointer, text.toNativeUtf8());
+    }
+
+    int GetTextHeight(String text) {
+        _validatePointer('GetTextHeight');
+        return _GetTextHeight!(structPointer, text.toNativeUtf8());
     }
 
     String get name {
@@ -641,7 +682,7 @@ typedef _libEvent_class_Event_method_GetKeyPressReleaseData_sig = int Function(P
 // ----------CLASS IMPLEMENTATIONS----------
 
 class Event {
-    Pointer<Void> structPointer = Pointer.fromAddress(0);
+    Pointer<Void> structPointer = nullptr;
 
     void _validatePointer(String methodName) {
         if (structPointer.address == 0) {
@@ -689,6 +730,7 @@ class Event {
         structPointer = ptr;
     }
 
+    @mustCallSuper
     void Free() {
         _validatePointer('Free');
         final out = _FreeEvent!(structPointer);

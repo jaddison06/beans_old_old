@@ -3,9 +3,10 @@ import 'FontCache.dart';
 import 'dart_codegen.dart';
 import 'BeansRenderer.dart';
 import 'dart:ffi';
-import 'package:ffi/ffi.dart';
 import 'ColourWindow.dart';
 import 'dart:math';
+import 'XYPointer.dart';
+import 'BeansRenderWindow.dart';
 
 extension on Iterable<int> {
   int sum() {
@@ -33,7 +34,7 @@ class WindowData {
   }
 
   /// Render [window] using [x], [y], [width] and [height].
-  void render(RenderWindow rw, int x, int y) {
+  void render(BeansRenderWindow rw, int x, int y) {
     window.render(rw, x, y, width, height);
   }
 
@@ -49,13 +50,8 @@ class WindowData {
   });
 }
 
-// todo: instead of giving the [WindowData] width & height, give the Collection a crossSize and a list of mainSizes,
-// and only calculate the width & height at render time. That way, to resize the collection, you only need to change
-// one variable. Also, you can make windows private, and have a
-// single method Collection.addWindow(BeansWindow win, int mainSize, bool isFocused)
-//
 /// A row or column of windows
-class Collection {
+class Collection extends XYPointer {
   final windows = <WindowData>[];
 
   bool get isColumns => BeansWindowManager.layoutMode == BeansWindowLayoutMode.Columns;
@@ -83,13 +79,22 @@ class Collection {
     }
   }
 
-  void render(RenderWindow rw, int crossPos) {
+  void render(BeansRenderWindow rw, int crossPos) {
     _forEachWithMainPos((wd, mainPos) {
-      wd.render(
-        rw,
-        x(mainPos, crossPos),
-        y(mainPos, crossPos)
-      );
+      final x_ = x(mainPos, crossPos);
+      final y_ = y(mainPos, crossPos);
+      try {
+        wd.render(
+          rw,
+          x_,
+          y_
+        );
+      } catch (e, trace) {
+        rw.FillRectC(x_, y_, wd.width, wd.height, 255, 0, 0);
+        final font = FontCache.family().font();
+        final msg = 'Error while rendering window ${wd.window.title}:\n$e\nTraceback:\n$trace';
+        rw.DrawText(font, msg, x_, y_, 0, 0, 0, 255);
+      }
     });
   }
 
@@ -119,22 +124,15 @@ enum BeansWindowLayoutMode {
   Rows
 }
 
-// todo:
-//   - Replace all uses of idx with the actual candidate - they're mutable
-//   - Decorations (needs text rendering)
-//   - Remove dead code
 /// BeansWindowManager is responsible for:
 /// - Rendering [BeansWindow]s
 /// - Turning the raw [Event]s from SDL into a more usable format
 /// - Hit-testing windows and passing these events to them
 /// - Allowing the user to resize, relocate, add, or remove windows
 /// - Rendering window decorations and other UI elements
-class BeansWindowManager {
+class BeansWindowManager extends XYPointer {
   late final BeansRenderer _ren;
-  final RenderWindow _rw;
-
-  final Pointer<Int32> _x;
-  final Pointer<Int32> _y;
+  final BeansRenderWindow _rw;
 
   final List<Collection> _windows = [];
   
@@ -163,10 +161,7 @@ class BeansWindowManager {
 
   static BeansWindowLayoutMode layoutMode = BeansWindowLayoutMode.Rows;
 
-  BeansWindowManager(this._rw) :
-    _x = malloc<Int32>(),
-    _y = malloc<Int32>()
-  {
+  BeansWindowManager(this._rw) {
     _ren = BeansRenderer(
       rw: _rw,
       render: _render,
@@ -248,40 +243,16 @@ class BeansWindowManager {
   /// get the current total main axis size of the collection
   int totalMainAxisSize(/*Collection collection*/) {
     // 2 ways of doing it
-    _rw.GetSize(_x, _y);
-    return isColumns ? _y.value : _x.value;
+    _rw.GetSize(xPtr, yPtr);
+    return isColumns ? yPtr.value : xPtr.value;
     //return collection.windows.map((wd) => mainSize(wd)).sum().toInt();
   }
 
-  /// get the total cross axis size of the [RenderWindow]
+  /// get the total cross axis size of the [BeansRenderWindow]
   int totalCrossAxisSize() {
-    _rw.GetSize(_x, _y);
-    return isColumns ? _x.value : _y.value;
+    _rw.GetSize(xPtr, yPtr);
+    return isColumns ? xPtr.value : yPtr.value;
   }
-
-/*
-  /// for a column, the X position of the window's left edge.
-  int alignedStart(WindowData wd) {
-    return isColumns ? wd.x : wd.y;
-  }
-
-  /// for a column, the Y position of the window's top edge.
-  int offsetStart(WindowData wd) {
-    return isColumns ? wd.y : wd.x;
-  }
-
-  /// for a column, the X position of the window's right edge.
-  int alignedEnd(WindowData wd) {
-    // 2 ways of doing it
-    //return isColumns ? wd.x2 : wd.y2;
-    return alignedStart(wd) + crossSize(wd);
-  }
-
-  /// for a column, the Y position of the window's bottom edge.
-  int offsetEnd(WindowData wd) {
-    return offsetStart(wd) + mainSize(wd);
-  }
-*/
 
   /// set the main axis size of a window
   void setMainSize(WindowData wd, int newSize) {
@@ -300,25 +271,6 @@ class BeansWindowManager {
       wd.height = newSize;
     }
   }
-/*
-  /// set the position of a window on the main axis
-  void setMainPos(WindowData wd, int newPos) {
-    if (isColumns) {
-      wd.y = newPos;
-    } else {
-      wd.x = newPos;
-    }
-  }
-
-  /// set the position of a window on the cross axis
-  void setCrossPos(WindowData wd, int newPos) {
-    if (isColumns) {
-      wd.x = newPos;
-    } else {
-      wd.y = newPos;
-    }
-  }
-*/
 
   /// Calculates x, y, width, height and initializes the [WindowData]. Assumes that resizing of other windows
   /// has already been done, and that it is **not** a floating window.
@@ -365,12 +317,10 @@ class BeansWindowManager {
     //! this must be a double
     final ratio = (totalCrossSize - (newCrossSize - oldCrossSize)) / totalCrossSize;
 
-    Collection? previousCollection;
     for (var i=0; i<_windows.length; i++) {
       final modifyCollection = _windows[i];
       if (i == collectionIdx) {
         // resize the selected collection to newCrossSize
-        //resizeCollection(i, newCrossSize);
         _windows[i].setCrossSize(newCrossSize);
       } else {
         // resize the collection to either its current size * the ratio, or its mininum size, whichever is bigger.
@@ -380,16 +330,7 @@ class BeansWindowManager {
             minPossibleCrossSize(modifyCollection)
           )
         );
-        /*resizeCollection(i,
-          max(
-            (crossSize(modifyCollection.last) * ratio).toInt(),
-            minPossibleCrossSize(modifyCollection)
-          )
-        );*/
       }
-      // reposition the collection
-      //setCollectionPos(i, previousCollection == null ? 0 : alignedEnd(previousCollection.last));
-      previousCollection = modifyCollection;
     }
 
   }
@@ -504,7 +445,6 @@ class BeansWindowManager {
     final currentMainSize = totalMainAxisSize();
     //! must be a double
     final ratio = (currentMainSize - minMainSize(win)) / currentMainSize;
-    WindowData? previousWindow;
     for (var modifyWindow in collection.windows) {
       setMainSize(modifyWindow,
         max(
@@ -512,8 +452,6 @@ class BeansWindowManager {
           minMainSize(modifyWindow.window)
         )
       );
-      //setMainPos(modifyWindow, previousWindow == null ? 0 : offsetEnd(previousWindow));
-      previousWindow = modifyWindow;
     }
     resizeIfNeeded(collectionIdx, win);
     addWindowToCollection(
@@ -561,7 +499,7 @@ class BeansWindowManager {
     print(msg);
   }
 
-  /// Something has gone seriously wrong, but the RenderWindow is still alive, so display a graphical panic screen.
+  /// Something has gone seriously wrong, but the BeansRenderWindow is still alive, so display a graphical panic screen.
   void gpanic(Object exception, StackTrace trace) {
     print('An exception occured within Beans:\n$exception\nTrace:\n$trace');
   }
@@ -575,19 +513,19 @@ class BeansWindowManager {
   /// - STATE 2: Add the window to the end of an existing collection. In the main axis, scale all the windows in the collection
   /// so that they keep their relative size, or hit their minimum. In the cross axis, only resize the collection if the new
   /// window requires it - this is undesirable.
-  /// - STATE 3: Add a new collection at the end of the layout. The cross size is the [RenderWindow]'s maximum possible
+  /// - STATE 3: Add a new collection at the end of the layout. The cross size is the [BeansRenderWindow]'s maximum possible
   /// cross size. The main size is halfway between the new window's [minMainSize] and the [minPossibleMainSize] of all the
   /// collections so far.
   /// - STATE 4: Display an error message.
   void addWindow(BeansWindow win) {
     //print('addWindow: ${win.title}');
 
-    _rw.GetSize(_x, _y);
+    _rw.GetSize(xPtr, yPtr);
     if (
-      win.minWidth > _x.value ||
-      win.minHeight > _y.value
+      win.minWidth > xPtr.value ||
+      win.minHeight > yPtr.value
     ) {
-      error('Window ${win.title} had out-of-bounds minimum size: (${win.minWidth}x${win.minHeight}) in a (${_x.value}x${_y.value}) window.');
+      error('Window ${win.title} had out-of-bounds minimum size: (${win.minWidth}x${win.minHeight}) in a (${xPtr.value}x${yPtr.value}) window.');
       return;
     }
 
@@ -699,8 +637,13 @@ class BeansWindowManager {
   }
 
   /// Destroys any memory that has been allocated
+  @override
   void destroy() {
     _ren.destroy();
+    for (var collection in _windows) {
+      collection.destroy();
+    }
+    super.destroy();
   }
 
   WindowData? get _focusedWindow {
@@ -716,26 +659,10 @@ class BeansWindowManager {
     return out;
   }
 
-  /*void _render(RenderWindow rw) {
-    // todo: decorations etc
-    _forEachWindow((wd) {
-      // todo: if an error occurs during the render, display it in place of the window
-      wd.window.render(
-        rw,
-        wd.x,
-        wd.y,
-        wd.width,
-        wd.height
-      );
-    });
-    final font = FontCache.family().font();
-    rw.DrawText(font.structPointer, 'DEEZ NUTSSSSSSS', 15, 15, 0, 0, 0, 255);
-  }*/
-
   /// Render all windows.
   /// 
   /// Each window's x pos, y pos, width & height are updated to account for rounding issues during [addWindow].
-  void _render(RenderWindow rw) {
+  void _render(BeansRenderWindow rw) {
     _forEachCollectionWithCrossPos((collection, crossPos) {
       collection.render(rw, crossPos);
     });
@@ -744,20 +671,9 @@ class BeansWindowManager {
   }
 
   /// update the focused window based on [_x] and [_y]
-  /*void _setFocusedWindow() {
-    if (!(_focusedWindow?.hitTest(_x.value, _y.value) ?? false)) {
-      _focusedWindow?.isFocused = false;
-      _forEachWindow((wd) {
-        if (wd.hitTest(_x.value, _y.value)) {
-          wd.isFocused = true;
-          return true;
-        }
-      });
-    }
-  }*/
   void _setFocusedWindow() {
     _forEachCollectionWithCrossPos((collection, crossPos) {
-      final wd = collection.hitTest(_x.value, _y.value, crossPos);
+      final wd = collection.hitTest(xPtr.value, yPtr.value, crossPos);
       if (wd != null) {
         wd.isFocused = true;
         return true;
@@ -767,27 +683,32 @@ class BeansWindowManager {
 
   void _event(Event event) {
     switch (event.type) {
+      case SDLEventType.Quit: {
+        _ren.quit();
+        break;
+      }
+
       case SDLEventType.KeyDown: {
         _focusedWindow?.window.onKeyDown(event.GetKeyPressReleaseData());
         break;
       }
 
       case SDLEventType.MouseMove: {
-        event.GetMouseMoveData(_x, _y);
+        event.GetMouseMoveData(xPtr, yPtr);
 
-        _focusedWindow?.window.onMouseMove(_x.value, _y.value);
+        _focusedWindow?.window.onMouseMove(xPtr.value, yPtr.value);
         break;
       }
 
       case SDLEventType.MouseDown: {
-        final button = event.GetMousePressReleaseData(_x, _y);
+        final button = event.GetMousePressReleaseData(xPtr, yPtr);
         _setFocusedWindow();
 
         if (button == MouseButton.Right) {
           _ren.quit();
         }
         
-        _focusedWindow?.window.onMouseDown(_x.value, _y.value, button);
+        _focusedWindow?.window.onMouseDown(xPtr.value, yPtr.value, button);
         break;
       }
 

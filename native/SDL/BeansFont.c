@@ -28,6 +28,22 @@ void DestroyFont(BeansFont* bf) {
     free(bf);
 }
 
+void GetTextSize(BeansFont* bf, char* text, int* width, int* height) {
+    TTF_SizeText(bf->font, text, width, height);
+}
+
+int GetTextWidth(BeansFont* bf, char* text) {
+    int width;
+    GetTextSize(bf, text, &width, NULL);
+    return width;
+}
+
+int GetTextHeight(BeansFont* bf, char* text) {
+    int height;
+    GetTextSize(bf, text, NULL, &height);
+    return height;
+}
+
 char* BFGetName(BeansFont* bf) {
     return bf->name;
 }

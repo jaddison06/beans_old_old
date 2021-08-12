@@ -2,15 +2,16 @@ import 'dart_codegen.dart';
 import 'BeansWindowManager.dart';
 import 'dart:io';
 import 'FontCache.dart';
+import 'BeansRenderWindow.dart';
 
 /// Beans is responsible for initialization, error handling & cleanup at
-/// the highest level. It creates the [RenderWindow] and the [BeansWindowManager].
+/// the highest level. It creates the [BeansRenderWindow] and the [BeansWindowManager].
 class Beans {
-  late final RenderWindow _rw;
+  late final BeansRenderWindow _rw;
   late final BeansWindowManager _wm;
 
   Beans() {
-    _rw = RenderWindow('beans');
+    _rw = BeansRenderWindow();
     if (_rw.errorCode != SDLInitCode.Success) {
       _panic(SDLInitCodeToString(_rw.errorCode));
     }

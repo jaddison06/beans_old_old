@@ -93,7 +93,7 @@ KeyCode GetKeyPressReleaseData(SDL_Event* event) {
         case SDLK_QUESTION: return KeyCode_Question;
         case SDLK_QUOTEDBL: return KeyCode_DoubleQuote;
         case SDLK_QUOTE: return KeyCode_SingleQuote;
-        // todo (jaddison): pound?
+        // todo: pound?
         case SDLK_DOLLAR: return KeyCode_Dollar;
         case SDLK_PERCENT: return KeyCode_Percent;
         case SDLK_CARET: return KeyCode_Caret;
@@ -103,11 +103,11 @@ KeyCode GetKeyPressReleaseData(SDL_Event* event) {
         case SDLK_UNDERSCORE: return KeyCode_Underscore;
         case SDLK_EQUALS: return KeyCode_Equals;
         case SDLK_PLUS: return KeyCode_Plus;
-        // todo (jaddison): pipe
+        // todo: pipe
         case SDLK_SEMICOLON: return KeyCode_Semicolon;
         case SDLK_COLON: return KeyCode_Colon;
         case SDLK_AT: return KeyCode_At;
-        // todo (jaddison): tilde
+        // todo: tilde
         case SDLK_HASH: return KeyCode_Hash;
         case SDLK_BACKQUOTE: return KeyCode_Backtick;
 
@@ -115,7 +115,7 @@ KeyCode GetKeyPressReleaseData(SDL_Event* event) {
         case SDLK_RIGHTPAREN: return KeyCode_NormalBracketR;
         case SDLK_LEFTBRACKET: return KeyCode_SquareBracketL;
         case SDLK_RIGHTBRACKET: return KeyCode_SquareBracketR;
-        // todo (jaddison): braces
+        // todo: braces
         case SDLK_LESS: return KeyCode_SmallerThan;
         case SDLK_GREATER: return KeyCode_GreaterThan;
 

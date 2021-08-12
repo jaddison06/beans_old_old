@@ -4,8 +4,6 @@
 #include "native/c_codegen.h"
 #include "BeansFont.h"
 
-// todo: render text, images
-
 typedef struct {
     SDL_Window* win;
     SDL_Renderer* ren;
@@ -142,15 +140,30 @@ SDL_Texture* GetTextTexture(RenderWindow* rw, TTF_Font* font, char* text, int r,
     return textTexture;
 }
 
+int max(int a, int b) {
+    return a > b ? a : b;
+}
+
+int min(int a, int b) {
+    return a < b ? a : b;
+}
+
+void clip(SDL_Rect* renderRect, SDL_Rect* clipRect) {
+    renderRect->x = max(renderRect->x, clipRect->x);
+    renderRect->y = max(renderRect->y, clipRect->y);
+    renderRect->w = min(renderRect->w, clipRect->w);
+    renderRect->h = min(renderRect->h, clipRect->h);
+}
+
 void RenderTexture(RenderWindow* rw, SDL_Texture* texture, int x, int y, int width, int height) {
-    SDL_Rect renderQuad = {
+    SDL_Rect renderRect = {
         x: x,
         y: y,
         w: width,
         h: height
     };
-    
-    SDL_RenderCopy(rw->ren, texture, NULL, &renderQuad);
+
+    SDL_RenderCopy(rw->ren, texture, NULL, &renderRect);
 }
 
 void DrawText(RenderWindow* rw, BeansFont* font, char* text, int x, int y, int r, int g, int b, int a) {
