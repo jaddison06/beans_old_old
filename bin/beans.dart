@@ -16,6 +16,9 @@ class Beans {
       _panic(SDLInitCodeToString(_rw.errorCode));
     }
     _wm = BeansWindowManager(_rw);
+
+    FontCache.defaultFamily = 'res/DroidSansMono/DroidSansMono.ttf';
+    FontCache.defaultSize = 24;
   }
 
   /// Something has gone seriously wrong and the WindowManager has died, so print a panic message to the terminal.
@@ -41,16 +44,16 @@ class Beans {
 
   /// Free resources
   void destroy() {
+    //* must be called before TTF_Quit() in RenderWindow.Destroy()
+    FontCache.destroyAll();
+
     _wm.destroy();
     _rw.Destroy();
   }
 }
 
 void main() {
-  FontCache.defaultFamily = 'res/DroidSansMono/DroidSansMono.ttf';
-  FontCache.defaultSize = 24;
   final beans = Beans();
   beans.start();
   beans.destroy();
-  FontCache.destroyAll();
 }

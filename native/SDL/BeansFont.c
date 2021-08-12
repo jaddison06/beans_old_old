@@ -2,6 +2,10 @@
 #include "native/c_codegen.h"
 #include "BeansFont.h"
 
+void PrintFont(BeansFont* bf) {
+    printf("BeansFont '%s' @ %p, size %i, TTF @ %p\n", bf->name, bf, bf->size, bf->font);
+}
+
 BeansFont* InitFont(const char* name, int size) {
     BeansFont* out = malloc(sizeof(BeansFont));
 
@@ -13,16 +17,12 @@ BeansFont* InitFont(const char* name, int size) {
 
     out->font = TTF_OpenFont(name, size);
 
-    /*printf(
-        "Initialized BeansFont @ %p, name %s, size %i, ttf @ %p, pname %s, psize %i\n",
-        out, out->name, out->size, out->font, name, size
-    );*/
+    //PrintFont(out);
 
     return out;
 }
 
 void DestroyFont(BeansFont* bf) {
-    puts("DestroyFont");
     TTF_CloseFont(bf->font);
     free(bf->name);
     free(bf);

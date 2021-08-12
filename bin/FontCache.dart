@@ -13,8 +13,8 @@ class FontCache {
   void _destroy() {
     for (var size in _fonts.keys) {
       _fonts[size]!.Destroy();
-      _fonts.remove(size);
     }
+    _fonts.clear();
   }
 
   /// Get the [BeansFont] with size [size]. Similarly to [family], if [size] is null, then [defaultSize] is used. If that's
@@ -57,7 +57,7 @@ class FontCache {
   static void destroyAll() {
     for (var family in _instances.keys) {
       _instances[family]!._destroy();
-      _instances.remove(family);
     }
+    _instances.clear();
   }
 }
