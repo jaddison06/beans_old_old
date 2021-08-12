@@ -89,7 +89,7 @@ def func_class_private_refs(funcs: list[CodegenFunction], getName: Callable[[Cod
     out = ""
 
     for func in funcs:
-        out += f"    late {getName(func)} _{func.name};\n"
+        out += f"    static {getName(func)}? _{func.name};\n"
     out += "\n"
 
     return out
@@ -123,7 +123,7 @@ def param_list(func: CodegenFunction) -> str:
 def func_class_get_library(file: ParsedGenFile) -> str:
     out = ""
 
-    out += f"        final lib = DynamicLibrary.open('build{path.sep}"
+    out += f"            final lib = DynamicLibrary.open('build{path.sep}"
     # in the Dart string, if we're on Windows, we want to put "build\\whatever", or the slash will get interpreted
     # by Dart as an escape character
     if path.sep == "\\":
@@ -138,7 +138,27 @@ def func_class_init_refs(funcs: list[CodegenFunction], getName: Callable[[Codege
     out = ""
 
     for func in funcs:
-        out += f"        _{func.name} = lib.lookupFunction<{getName(func, True)}, {getName(func, False)}>('{func.name}');\n"
+        out += f"            _{func.name} = lib.lookupFunction<{getName(func, True)}, {getName(func, False)}>('{func.name}');\n"
+
+    return out
+
+def func_class_refs_initializer(file: ParsedGenFile, funcs: list[CodegenFunction], getName: Callable[[CodegenFunction, bool], str]) -> str:
+    out: str = ""
+
+    out += "    void _initRefs() {\n"
+    
+    out += "        if (\n"
+    for i, func in enumerate(funcs):
+        out += "            "
+        out += f"_{func.name} == null"
+        if i != len(funcs) - 1:
+            out += " ||"
+        out += "\n"
+    out += "        ) {\n"
+    out += func_class_get_library(file)
+    out += func_class_init_refs(funcs, getName)
+    out += "        }\n"
+    out += "    }\n\n"
 
     return out
 
@@ -147,6 +167,10 @@ def func_class_func_return_type(func: CodegenFunction) -> str:
     if func.return_type.typename == "bool":
         typename = "bool"
     elif lookup.is_enum(func.return_type.typename):
+        typename = func.return_type.typename
+    elif typename == "Pointer<Utf8>":
+        typename = "String"
+    elif lookup.is_class(func.return_type.typename):
         typename = func.return_type.typename
 
     return typename
@@ -180,6 +204,13 @@ def func_class_return_string(func: CodegenFunction, get_value: str) -> str:
         out += f"({get_value}) == 1"
     elif lookup.is_enum(func.return_type.typename):
         out += f"{func.return_type.typename}FromInt({get_value})"
+    elif get_typename(func.return_type, DART) == "Pointer<Utf8>":
+        out += f"({get_value}).toDartString()"
+    elif lookup.is_class(func.return_type.typename):
+        # hoohooheehohaaaaaaaaaaaaaaa
+        # trusting the C code to produce a valid struct!!!
+        # also this kinda fucks the memory management - who is responsible for destroying this?
+        out += f"{func.return_type.typename}.fromPointer({get_value})"
     else:
         out += get_value
 
@@ -199,23 +230,20 @@ def funcs(file: ParsedGenFile) -> str:
 
     out += f"class {file.libname()} {{\n\n"
     out += func_class_private_refs(file.functions, lambda func: func_sig_name(file, func.name, False))
+    out += func_class_refs_initializer(file, file.functions, lambda func, is_native: func_sig_name(file, func.name, is_native))
     
     out += f"    {file.libname()}() {{\n"
-   
-    out += func_class_get_library(file)
-
-
-    out += func_class_init_refs(file.functions, lambda func, is_native: func_sig_name(file, func.name, is_native))
+    out +=  "        _initRefs();\n"
     out += "    }\n\n"
 
     for func in file.functions:
-        out += f"    {func_class_func_return_type(func)} {func.name}("
+        out += f"    {func_class_func_return_type(func)} {func.display_name()}("
 
         out += param_list(func)
 
         out +=  "        return "
         out += func_class_return_string(func,
-            f"_{func.name}({func_params(func)})"
+            f"_{func.name}!({func_params(func)})"
         )
         out += "    }\n\n"
     
@@ -270,18 +298,23 @@ def classes(file: ParsedGenFile) -> str:
 
         out += func_class_private_refs(class_.methods, lambda method: method_sig_name(file, class_, method, False))
 
-        # todo: static functions which get looked up _once_
+        out += func_class_refs_initializer(file, class_.methods,  lambda method, is_native: method_sig_name(file, class_, method, is_native))
 
         initializer = class_.initializer()
         out += f"    {class_.name}("
         out += param_list(initializer)
-        out += func_class_get_library(file)
-        out += func_class_init_refs(class_.methods, lambda method, is_native: method_sig_name(file, class_, method, is_native))
 
-        out += f"\n        structPointer = _{initializer.name}("
+        #! ALL CONSTRUCTORS MUST CALL _initRefs()
+        out +=  "        _initRefs();\n"
+        out += f"        structPointer = _{initializer.name}!("
         out += func_params(initializer)
         out += ");\n"
         out += "    }\n\n"
+
+        out += f"    {class_.name}.fromPointer(Pointer<Void> ptr) {{\n"
+        out +=  "        _initRefs();\n"
+        out +=  "        structPointer = ptr;\n"
+        out +=  "    }\n\n"
 
         for method in class_.methods:
             if has_annotation(method.annotations, "Initializer"): continue
@@ -290,23 +323,22 @@ def classes(file: ParsedGenFile) -> str:
             del method.params["struct_ptr"]
 
             if has_annotation(method.annotations, "Getter"):
+                getter = get_annotation(method.annotations, "Getter")
+                if has_annotation(method.annotations, "Show"):
+                    print(f"Warning: Annotation {get_annotation(method.annotations, 'Show')} on {class_.name}.{method.name} will have no effect, because the method also has the annotation {getter}.")
                 param_count = len(method.params)
                 assert param_count == 0, f"A getter cannot take any parameters, but {method.name} takes {param_count}"
                 out += f"    {func_class_func_return_type(method)} get "
-                out += get_annotation(method.annotations, "Getter").args[0]
+                out += getter.args[0]
                 out += " {\n"
 
-            else:            
-                method_show_name = method.name
-                if has_annotation(method.annotations, "Show"):
-                    method_show_name = get_annotation(method.annotations, "Show").args[0]
-                
-                out += f"    {func_class_func_return_type(method)} {method_show_name}("
+            else:                
+                out += f"    {func_class_func_return_type(method)} {method.display_name()}("
                 out += param_list(method)
 
             # todo: call validatePointer using the method's user-facing name, not the C name.
-            out += f"        _validatePointer('{method.name}');\n"
-            get_return_value = f"_{method.name}(structPointer"
+            out += f"        _validatePointer('{method.display_name()}');\n"
+            get_return_value = f"_{method.name}!(structPointer"
             if len(method.params) > 0:
                 get_return_value += ", "
             get_return_value += func_params(method)

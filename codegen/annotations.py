@@ -1,4 +1,11 @@
-from codegen_types import *
+from dataclasses import dataclass
+@dataclass
+class CodegenAnnotation:
+    name: str
+    args: list[str]
+
+    def __str__(self) -> str:
+        return f"@{self.name}({', '.join(self.args)})"
 
 def has_annotation(annotations: list[CodegenAnnotation], name: str) -> bool:
     for annotation in annotations:

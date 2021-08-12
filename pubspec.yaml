@@ -14,3 +14,4 @@ dev_dependencies:
 dependencies: 
   ffi: ^1.1.2
   jaguar_hotreload: ^2.0.2
+  meta: ^1.7.0

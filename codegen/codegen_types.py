@@ -1,14 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 import os.path as path
-
-@dataclass
-class CodegenAnnotation:
-    name: str
-    args: list[str]
-
-    def __str__(self) -> str:
-        return f"@{self.name}({', '.join(self.args)})"
+from annotations import *
 
 @dataclass
 class CodegenType:
@@ -47,6 +40,15 @@ class CodegenFunction:
         out += ")"
 
         return out
+    
+    def display_name(self) -> str:
+        if has_annotation(self.annotations, "Getter"):
+            return get_annotation(self.annotations,"Getter").args[0]
+        if has_annotation(self.annotations, "Show"):
+            return get_annotation(self.annotations, "Show").args[0]
+        else:
+            return self.name
+
 
 @dataclass
 class CodegenDataStructureField:
@@ -101,6 +103,28 @@ class CodegenClass:
         
         raise ValueError("CodegenClass.initializer() was called but no initializer method was found.")
 
+# each set of annotations is a dict of annotation name to argc
+SUPPORTED_ANNOTATIONS: dict[str, dict[str, int]] = {
+    "class": {
+
+    },
+    "function": {
+        "Show": 1
+    },
+    "method": {
+        "Initializer": 0,
+        "Getter": 1,
+        "Show": 1,
+        "Invalidates": 0
+    },
+    "enum": {
+
+    },
+    "file": {
+        "LinkWithLib": 1
+    }
+}
+
 @dataclass
 class ParsedGenFile:
     # eg native/some_subdir/something.gen
@@ -111,6 +135,44 @@ class ParsedGenFile:
     classes: list[CodegenClass]
 
     annotations: list[CodegenAnnotation]
+
+    def validate_annotation(self, annotation: CodegenAnnotation, typename: str) -> Optional[str]:
+        if annotation.name not in SUPPORTED_ANNOTATIONS[typename]:
+            return f"Annotation '{annotation}' not supported on objects of type '{typename}'."
+        
+        arg_len = len(annotation.args)
+        expected_arg_len = SUPPORTED_ANNOTATIONS[typename][annotation.name]
+        if arg_len != expected_arg_len:
+            return f"Annotation {annotation} expected {expected_arg_len} arguments, but got {arg_len}."
+        
+
+    def validate_annotation_list(self, annotations: list[CodegenAnnotation], typename: str) -> str:
+        out = ""
+
+        for annotation in annotations:
+            res = self.validate_annotation(annotation, typename)
+            if res != None:
+                out += res + "\n"
+        
+        return out
+
+    def validate_all_annotations(self) -> str:
+        out = ""
+
+        out += self.validate_annotation_list(self.annotations, "file")
+        for function in self.functions:
+            out += self.validate_annotation_list(function.annotations, "function")
+        for enum in self.enums:
+            out += self.validate_annotation_list(enum.annotations, "enum")
+        for class_ in self.classes:
+            out += self.validate_annotation_list(class_.annotations, "class")
+            for method in class_.methods:
+                out += self.validate_annotation_list(method.annotations, "method")
+
+        if out.endswith('\n'):
+            out = out[:-1]
+
+        return out
 
     # returns "something"
     def id(self) -> str:

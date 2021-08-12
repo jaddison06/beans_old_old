@@ -1,5 +1,7 @@
 from codegen_types import *
 from annotations import *
+from termcolor import colored
+import sys
 
 def strip_all(strings: list[str]) -> list[str]:
     return list(map(
@@ -75,6 +77,10 @@ class Parser:
                     )
                 )
         
+        annotation_warnings = out.validate_all_annotations()
+        if annotation_warnings != "":
+            self.warn(annotation_warnings)
+        
         return out
     
 
@@ -87,9 +93,8 @@ class Parser:
             try:
                 close_bracket_idx = contents[i:].index('}')
             except ValueError:
-                print("Closing bracket not found")
-                print(f"Open bracket in {self.fname}, line {i+1}: {contents[i]}")
-                raise
+                self.error("Closing bracket not found", contents[i], '{')
+                
         return contents[i:
             i + close_bracket_idx + 1
         ]
@@ -111,24 +116,55 @@ class Parser:
             typename,
             is_pointer
         ), name
+    
+    def error(self, msg: str, line: str = '', error: str = '', prefix: str = 'Error'):
+        self.warn(msg, line, error, prefix)
+        sys.exit()
+    
+    # if this is passed dodgy arguments then things will get v messy
+    def warn(self, msg: str, line: str = '', error: str = '', prefix: str = 'Warning'):
+        print(f'In file: {self.fname}')
+        print(colored(f"{prefix}: {msg}", 'red'))
+        if line != '':
+            line = line.strip()
+            if error != '':
+                error_pos = line.index(error)
+                before_error = line[:error_pos]
+                after_error = line[error_pos + len(error):]
+                print(before_error, end='')
+                print(colored(error, 'red'), end='')
+                print(after_error)
+                print(' ' * len(before_error), end='')
+                print('^')
+            else:
+                print(colored(line, 'red'))
+                print(' ' * len(line), end='')
+                print('^')
 
     #* ALL PARSE FUNCTIONS NEED TO MAKE SURE THEY CAN ACCEPT LINES WITH A COMMENT AT THE END:
     # void some_code() // this code does something!!
 
     def normalize(self, line: str, ensure_newline: bool = False) -> str:
         if '//' in line:
-            line = line.split('//')[0].strip()
-        if (not line.endswith('\n')) and ensure_newline:
-            line += '\n'
-        elif line.endswith('\n') and (not ensure_newline):
+            line = line.split('//')[0]
+            
+        line = line.strip()
+        
+        if line.endswith(';'):
+            self.warn('Semicolons are not required in codegen any more', line, ';')
             line = line[:-1]
+
+        if ensure_newline:
+            line += '\n'
         
         return line
 
     def parse_annotation(self, annotation: str) -> CodegenAnnotation:
-        assert "(" in annotation, "Annotations must end with parentheses, even if they have no arguments."
-        
+
         annotation = self.normalize(annotation, True)
+
+        if not annotation.endswith(')\n'):
+            self.error('Annotations must end with parentheses, even if they have no arguments', annotation)
 
         name, args_raw = annotation[1:].split("(")
         args: list[str] = []
@@ -216,7 +252,7 @@ class Parser:
                 
             if line == '':
                 if len(current_annotations) > 0:
-                    raise ValueError(
+                    self.error(
                         f"Whitespace after annotations in a class - what do these annotations apply to?\n{current_annotations}\n" + 
                         "To apply annotations to the whole class, place them directly before the class definition."
                     )
@@ -237,7 +273,7 @@ class Parser:
                 method = self.parse_function(line, current_annotations)
                 for param in method.params:
                     if param == "struct_ptr":
-                        raise NameError("Class methods cannot have a parameter named 'struct_ptr'.")
+                        self.error("Class methods cannot have a parameter named 'struct_ptr'.", line, 'struct_ptr')
                 if not has_annotation(current_annotations, "Initializer"):
                     # fuckery to put struct_ptr at the _start_ of method.params
                     method.params = {"struct_ptr": CodegenType(typename = "void", is_pointer = True), **method.params}
@@ -246,7 +282,7 @@ class Parser:
                 )
                 current_annotations = []
             else:
-                raise ValueError("Class fields aren't supported yet, what the fuck do you think i am, a miracle worker?")
+                self.error("Class fields aren't supported yet, what the fuck do you think i am, a miracle worker?", line)
                 field_type, field_name = self.to_codegen_type(line[:-1])
                 # it's a field. probably.
                 out.fields.append(
@@ -260,6 +296,7 @@ class Parser:
         
         # all that bollocks
         err_msg = out.validate()
-        assert err_msg is None, err_msg
+        if err_msg is not None:
+            self.error(err_msg)
 
         return out

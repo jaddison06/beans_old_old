@@ -90,41 +90,64 @@ class RenderWindow {
         }
     }
 
-    late _libRenderWindow_class_RenderWindow_method_InitRenderWindow_sig _InitRenderWindow;
-    late _libRenderWindow_class_RenderWindow_method_DestroyRenderWindow_sig _DestroyRenderWindow;
-    late _libRenderWindow_class_RenderWindow_method_RWGetErrorCode_sig _RWGetErrorCode;
-    late _libRenderWindow_class_RenderWindow_method_RWGetFrameCount_sig _RWGetFrameCount;
-    late _libRenderWindow_class_RenderWindow_method_RWGetSize_sig _RWGetSize;
-    late _libRenderWindow_class_RenderWindow_method_Flush_sig _Flush;
-    late _libRenderWindow_class_RenderWindow_method_SetColour_sig _SetColour;
-    late _libRenderWindow_class_RenderWindow_method_DrawPoint_sig _DrawPoint;
-    late _libRenderWindow_class_RenderWindow_method_DrawLine_sig _DrawLine;
-    late _libRenderWindow_class_RenderWindow_method_DrawRect_sig _DrawRect;
-    late _libRenderWindow_class_RenderWindow_method_FillRect_sig _FillRect;
-    late _libRenderWindow_class_RenderWindow_method_DrawText_sig _DrawText;
+    static _libRenderWindow_class_RenderWindow_method_InitRenderWindow_sig? _InitRenderWindow;
+    static _libRenderWindow_class_RenderWindow_method_DestroyRenderWindow_sig? _DestroyRenderWindow;
+    static _libRenderWindow_class_RenderWindow_method_RWGetErrorCode_sig? _RWGetErrorCode;
+    static _libRenderWindow_class_RenderWindow_method_RWGetFrameCount_sig? _RWGetFrameCount;
+    static _libRenderWindow_class_RenderWindow_method_RWGetSize_sig? _RWGetSize;
+    static _libRenderWindow_class_RenderWindow_method_Flush_sig? _Flush;
+    static _libRenderWindow_class_RenderWindow_method_SetColour_sig? _SetColour;
+    static _libRenderWindow_class_RenderWindow_method_DrawPoint_sig? _DrawPoint;
+    static _libRenderWindow_class_RenderWindow_method_DrawLine_sig? _DrawLine;
+    static _libRenderWindow_class_RenderWindow_method_DrawRect_sig? _DrawRect;
+    static _libRenderWindow_class_RenderWindow_method_FillRect_sig? _FillRect;
+    static _libRenderWindow_class_RenderWindow_method_DrawText_sig? _DrawText;
+
+    void _initRefs() {
+        if (
+            _InitRenderWindow == null ||
+            _DestroyRenderWindow == null ||
+            _RWGetErrorCode == null ||
+            _RWGetFrameCount == null ||
+            _RWGetSize == null ||
+            _Flush == null ||
+            _SetColour == null ||
+            _DrawPoint == null ||
+            _DrawLine == null ||
+            _DrawRect == null ||
+            _FillRect == null ||
+            _DrawText == null
+        ) {
+            final lib = DynamicLibrary.open('build/native/SDL/libRenderWindow.so');
+
+            _InitRenderWindow = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_InitRenderWindow_native_sig, _libRenderWindow_class_RenderWindow_method_InitRenderWindow_sig>('InitRenderWindow');
+            _DestroyRenderWindow = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DestroyRenderWindow_native_sig, _libRenderWindow_class_RenderWindow_method_DestroyRenderWindow_sig>('DestroyRenderWindow');
+            _RWGetErrorCode = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_RWGetErrorCode_native_sig, _libRenderWindow_class_RenderWindow_method_RWGetErrorCode_sig>('RWGetErrorCode');
+            _RWGetFrameCount = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_RWGetFrameCount_native_sig, _libRenderWindow_class_RenderWindow_method_RWGetFrameCount_sig>('RWGetFrameCount');
+            _RWGetSize = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_RWGetSize_native_sig, _libRenderWindow_class_RenderWindow_method_RWGetSize_sig>('RWGetSize');
+            _Flush = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_Flush_native_sig, _libRenderWindow_class_RenderWindow_method_Flush_sig>('Flush');
+            _SetColour = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_SetColour_native_sig, _libRenderWindow_class_RenderWindow_method_SetColour_sig>('SetColour');
+            _DrawPoint = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DrawPoint_native_sig, _libRenderWindow_class_RenderWindow_method_DrawPoint_sig>('DrawPoint');
+            _DrawLine = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DrawLine_native_sig, _libRenderWindow_class_RenderWindow_method_DrawLine_sig>('DrawLine');
+            _DrawRect = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DrawRect_native_sig, _libRenderWindow_class_RenderWindow_method_DrawRect_sig>('DrawRect');
+            _FillRect = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_FillRect_native_sig, _libRenderWindow_class_RenderWindow_method_FillRect_sig>('FillRect');
+            _DrawText = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DrawText_native_sig, _libRenderWindow_class_RenderWindow_method_DrawText_sig>('DrawText');
+        }
+    }
 
     RenderWindow(String title) {
-        final lib = DynamicLibrary.open('build/native/SDL/libRenderWindow.so');
+        _initRefs();
+        structPointer = _InitRenderWindow!(title.toNativeUtf8());
+    }
 
-        _InitRenderWindow = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_InitRenderWindow_native_sig, _libRenderWindow_class_RenderWindow_method_InitRenderWindow_sig>('InitRenderWindow');
-        _DestroyRenderWindow = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DestroyRenderWindow_native_sig, _libRenderWindow_class_RenderWindow_method_DestroyRenderWindow_sig>('DestroyRenderWindow');
-        _RWGetErrorCode = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_RWGetErrorCode_native_sig, _libRenderWindow_class_RenderWindow_method_RWGetErrorCode_sig>('RWGetErrorCode');
-        _RWGetFrameCount = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_RWGetFrameCount_native_sig, _libRenderWindow_class_RenderWindow_method_RWGetFrameCount_sig>('RWGetFrameCount');
-        _RWGetSize = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_RWGetSize_native_sig, _libRenderWindow_class_RenderWindow_method_RWGetSize_sig>('RWGetSize');
-        _Flush = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_Flush_native_sig, _libRenderWindow_class_RenderWindow_method_Flush_sig>('Flush');
-        _SetColour = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_SetColour_native_sig, _libRenderWindow_class_RenderWindow_method_SetColour_sig>('SetColour');
-        _DrawPoint = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DrawPoint_native_sig, _libRenderWindow_class_RenderWindow_method_DrawPoint_sig>('DrawPoint');
-        _DrawLine = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DrawLine_native_sig, _libRenderWindow_class_RenderWindow_method_DrawLine_sig>('DrawLine');
-        _DrawRect = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DrawRect_native_sig, _libRenderWindow_class_RenderWindow_method_DrawRect_sig>('DrawRect');
-        _FillRect = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_FillRect_native_sig, _libRenderWindow_class_RenderWindow_method_FillRect_sig>('FillRect');
-        _DrawText = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DrawText_native_sig, _libRenderWindow_class_RenderWindow_method_DrawText_sig>('DrawText');
-
-        structPointer = _InitRenderWindow(title.toNativeUtf8());
+    RenderWindow.fromPointer(Pointer<Void> ptr) {
+        _initRefs();
+        structPointer = ptr;
     }
 
     void Destroy() {
-        _validatePointer('DestroyRenderWindow');
-        final out = _DestroyRenderWindow(structPointer);
+        _validatePointer('Destroy');
+        final out = _DestroyRenderWindow!(structPointer);
 
         // this method invalidates the pointer, probably by freeing memory
         structPointer = Pointer.fromAddress(0);
@@ -133,53 +156,53 @@ class RenderWindow {
     }
 
     SDLInitCode get errorCode {
-        _validatePointer('RWGetErrorCode');
-        return SDLInitCodeFromInt(_RWGetErrorCode(structPointer));
+        _validatePointer('errorCode');
+        return SDLInitCodeFromInt(_RWGetErrorCode!(structPointer));
     }
 
     int get frameCount {
-        _validatePointer('RWGetFrameCount');
-        return _RWGetFrameCount(structPointer);
+        _validatePointer('frameCount');
+        return _RWGetFrameCount!(structPointer);
     }
 
     void GetSize(Pointer<Int32> width, Pointer<Int32> height) {
-        _validatePointer('RWGetSize');
-        return _RWGetSize(structPointer, width, height);
+        _validatePointer('GetSize');
+        return _RWGetSize!(structPointer, width, height);
     }
 
     void Flush() {
         _validatePointer('Flush');
-        return _Flush(structPointer);
+        return _Flush!(structPointer);
     }
 
     void SetColour(int r, int g, int b, int a) {
         _validatePointer('SetColour');
-        return _SetColour(structPointer, r, g, b, a);
+        return _SetColour!(structPointer, r, g, b, a);
     }
 
     void DrawPoint(int x, int y) {
         _validatePointer('DrawPoint');
-        return _DrawPoint(structPointer, x, y);
+        return _DrawPoint!(structPointer, x, y);
     }
 
     void DrawLine(int x1, int y1, int x2, int y2) {
         _validatePointer('DrawLine');
-        return _DrawLine(structPointer, x1, y1, x2, y2);
+        return _DrawLine!(structPointer, x1, y1, x2, y2);
     }
 
     void DrawRect(int x, int y, int w, int h) {
         _validatePointer('DrawRect');
-        return _DrawRect(structPointer, x, y, w, h);
+        return _DrawRect!(structPointer, x, y, w, h);
     }
 
     void FillRect(int x, int y, int w, int h) {
         _validatePointer('FillRect');
-        return _FillRect(structPointer, x, y, w, h);
+        return _FillRect!(structPointer, x, y, w, h);
     }
 
     void DrawText(BeansFont font, String text, int x, int y, int r, int g, int b, int a) {
         _validatePointer('DrawText');
-        return _DrawText(structPointer, font.structPointer, text.toNativeUtf8(), x, y, r, g, b, a);
+        return _DrawText!(structPointer, font.structPointer, text.toNativeUtf8(), x, y, r, g, b, a);
     }
 
 }
@@ -217,25 +240,40 @@ class BeansFont {
         }
     }
 
-    late _libBeansFont_class_BeansFont_method_InitFont_sig _InitFont;
-    late _libBeansFont_class_BeansFont_method_DestroyFont_sig _DestroyFont;
-    late _libBeansFont_class_BeansFont_method_BFGetName_sig _BFGetName;
-    late _libBeansFont_class_BeansFont_method_BFGetSize_sig _BFGetSize;
+    static _libBeansFont_class_BeansFont_method_InitFont_sig? _InitFont;
+    static _libBeansFont_class_BeansFont_method_DestroyFont_sig? _DestroyFont;
+    static _libBeansFont_class_BeansFont_method_BFGetName_sig? _BFGetName;
+    static _libBeansFont_class_BeansFont_method_BFGetSize_sig? _BFGetSize;
+
+    void _initRefs() {
+        if (
+            _InitFont == null ||
+            _DestroyFont == null ||
+            _BFGetName == null ||
+            _BFGetSize == null
+        ) {
+            final lib = DynamicLibrary.open('build/native/SDL/libBeansFont.so');
+
+            _InitFont = lib.lookupFunction<_libBeansFont_class_BeansFont_method_InitFont_native_sig, _libBeansFont_class_BeansFont_method_InitFont_sig>('InitFont');
+            _DestroyFont = lib.lookupFunction<_libBeansFont_class_BeansFont_method_DestroyFont_native_sig, _libBeansFont_class_BeansFont_method_DestroyFont_sig>('DestroyFont');
+            _BFGetName = lib.lookupFunction<_libBeansFont_class_BeansFont_method_BFGetName_native_sig, _libBeansFont_class_BeansFont_method_BFGetName_sig>('BFGetName');
+            _BFGetSize = lib.lookupFunction<_libBeansFont_class_BeansFont_method_BFGetSize_native_sig, _libBeansFont_class_BeansFont_method_BFGetSize_sig>('BFGetSize');
+        }
+    }
 
     BeansFont(String name, int size) {
-        final lib = DynamicLibrary.open('build/native/SDL/libBeansFont.so');
+        _initRefs();
+        structPointer = _InitFont!(name.toNativeUtf8(), size);
+    }
 
-        _InitFont = lib.lookupFunction<_libBeansFont_class_BeansFont_method_InitFont_native_sig, _libBeansFont_class_BeansFont_method_InitFont_sig>('InitFont');
-        _DestroyFont = lib.lookupFunction<_libBeansFont_class_BeansFont_method_DestroyFont_native_sig, _libBeansFont_class_BeansFont_method_DestroyFont_sig>('DestroyFont');
-        _BFGetName = lib.lookupFunction<_libBeansFont_class_BeansFont_method_BFGetName_native_sig, _libBeansFont_class_BeansFont_method_BFGetName_sig>('BFGetName');
-        _BFGetSize = lib.lookupFunction<_libBeansFont_class_BeansFont_method_BFGetSize_native_sig, _libBeansFont_class_BeansFont_method_BFGetSize_sig>('BFGetSize');
-
-        structPointer = _InitFont(name.toNativeUtf8(), size);
+    BeansFont.fromPointer(Pointer<Void> ptr) {
+        _initRefs();
+        structPointer = ptr;
     }
 
     void Destroy() {
-        _validatePointer('DestroyFont');
-        final out = _DestroyFont(structPointer);
+        _validatePointer('Destroy');
+        final out = _DestroyFont!(structPointer);
 
         // this method invalidates the pointer, probably by freeing memory
         structPointer = Pointer.fromAddress(0);
@@ -243,14 +281,14 @@ class BeansFont {
         return out;
     }
 
-    Pointer<Utf8> get name {
-        _validatePointer('BFGetName');
-        return _BFGetName(structPointer);
+    String get name {
+        _validatePointer('name');
+        return (_BFGetName!(structPointer)).toDartString();
     }
 
     int get size {
-        _validatePointer('BFGetSize');
-        return _BFGetSize(structPointer);
+        _validatePointer('size');
+        return _BFGetSize!(structPointer);
     }
 
 }
@@ -611,31 +649,49 @@ class Event {
         }
     }
 
-    late _libEvent_class_Event_method_CreateEvent_sig _CreateEvent;
-    late _libEvent_class_Event_method_FreeEvent_sig _FreeEvent;
-    late _libEvent_class_Event_method_GetEventType_sig _GetEventType;
-    late _libEvent_class_Event_method_Poll_sig _Poll;
-    late _libEvent_class_Event_method_GetMouseMoveData_sig _GetMouseMoveData;
-    late _libEvent_class_Event_method_GetMousePressReleaseData_sig _GetMousePressReleaseData;
-    late _libEvent_class_Event_method_GetKeyPressReleaseData_sig _GetKeyPressReleaseData;
+    static _libEvent_class_Event_method_CreateEvent_sig? _CreateEvent;
+    static _libEvent_class_Event_method_FreeEvent_sig? _FreeEvent;
+    static _libEvent_class_Event_method_GetEventType_sig? _GetEventType;
+    static _libEvent_class_Event_method_Poll_sig? _Poll;
+    static _libEvent_class_Event_method_GetMouseMoveData_sig? _GetMouseMoveData;
+    static _libEvent_class_Event_method_GetMousePressReleaseData_sig? _GetMousePressReleaseData;
+    static _libEvent_class_Event_method_GetKeyPressReleaseData_sig? _GetKeyPressReleaseData;
+
+    void _initRefs() {
+        if (
+            _CreateEvent == null ||
+            _FreeEvent == null ||
+            _GetEventType == null ||
+            _Poll == null ||
+            _GetMouseMoveData == null ||
+            _GetMousePressReleaseData == null ||
+            _GetKeyPressReleaseData == null
+        ) {
+            final lib = DynamicLibrary.open('build/native/SDL/libEvent.so');
+
+            _CreateEvent = lib.lookupFunction<_libEvent_class_Event_method_CreateEvent_native_sig, _libEvent_class_Event_method_CreateEvent_sig>('CreateEvent');
+            _FreeEvent = lib.lookupFunction<_libEvent_class_Event_method_FreeEvent_native_sig, _libEvent_class_Event_method_FreeEvent_sig>('FreeEvent');
+            _GetEventType = lib.lookupFunction<_libEvent_class_Event_method_GetEventType_native_sig, _libEvent_class_Event_method_GetEventType_sig>('GetEventType');
+            _Poll = lib.lookupFunction<_libEvent_class_Event_method_Poll_native_sig, _libEvent_class_Event_method_Poll_sig>('Poll');
+            _GetMouseMoveData = lib.lookupFunction<_libEvent_class_Event_method_GetMouseMoveData_native_sig, _libEvent_class_Event_method_GetMouseMoveData_sig>('GetMouseMoveData');
+            _GetMousePressReleaseData = lib.lookupFunction<_libEvent_class_Event_method_GetMousePressReleaseData_native_sig, _libEvent_class_Event_method_GetMousePressReleaseData_sig>('GetMousePressReleaseData');
+            _GetKeyPressReleaseData = lib.lookupFunction<_libEvent_class_Event_method_GetKeyPressReleaseData_native_sig, _libEvent_class_Event_method_GetKeyPressReleaseData_sig>('GetKeyPressReleaseData');
+        }
+    }
 
     Event() {
-        final lib = DynamicLibrary.open('build/native/SDL/libEvent.so');
+        _initRefs();
+        structPointer = _CreateEvent!();
+    }
 
-        _CreateEvent = lib.lookupFunction<_libEvent_class_Event_method_CreateEvent_native_sig, _libEvent_class_Event_method_CreateEvent_sig>('CreateEvent');
-        _FreeEvent = lib.lookupFunction<_libEvent_class_Event_method_FreeEvent_native_sig, _libEvent_class_Event_method_FreeEvent_sig>('FreeEvent');
-        _GetEventType = lib.lookupFunction<_libEvent_class_Event_method_GetEventType_native_sig, _libEvent_class_Event_method_GetEventType_sig>('GetEventType');
-        _Poll = lib.lookupFunction<_libEvent_class_Event_method_Poll_native_sig, _libEvent_class_Event_method_Poll_sig>('Poll');
-        _GetMouseMoveData = lib.lookupFunction<_libEvent_class_Event_method_GetMouseMoveData_native_sig, _libEvent_class_Event_method_GetMouseMoveData_sig>('GetMouseMoveData');
-        _GetMousePressReleaseData = lib.lookupFunction<_libEvent_class_Event_method_GetMousePressReleaseData_native_sig, _libEvent_class_Event_method_GetMousePressReleaseData_sig>('GetMousePressReleaseData');
-        _GetKeyPressReleaseData = lib.lookupFunction<_libEvent_class_Event_method_GetKeyPressReleaseData_native_sig, _libEvent_class_Event_method_GetKeyPressReleaseData_sig>('GetKeyPressReleaseData');
-
-        structPointer = _CreateEvent();
+    Event.fromPointer(Pointer<Void> ptr) {
+        _initRefs();
+        structPointer = ptr;
     }
 
     void Free() {
-        _validatePointer('FreeEvent');
-        final out = _FreeEvent(structPointer);
+        _validatePointer('Free');
+        final out = _FreeEvent!(structPointer);
 
         // this method invalidates the pointer, probably by freeing memory
         structPointer = Pointer.fromAddress(0);
@@ -644,28 +700,28 @@ class Event {
     }
 
     SDLEventType get type {
-        _validatePointer('GetEventType');
-        return SDLEventTypeFromInt(_GetEventType(structPointer));
+        _validatePointer('type');
+        return SDLEventTypeFromInt(_GetEventType!(structPointer));
     }
 
     int Poll() {
         _validatePointer('Poll');
-        return _Poll(structPointer);
+        return _Poll!(structPointer);
     }
 
     void GetMouseMoveData(Pointer<Int32> x, Pointer<Int32> y) {
         _validatePointer('GetMouseMoveData');
-        return _GetMouseMoveData(structPointer, x, y);
+        return _GetMouseMoveData!(structPointer, x, y);
     }
 
     MouseButton GetMousePressReleaseData(Pointer<Int32> x, Pointer<Int32> y) {
         _validatePointer('GetMousePressReleaseData');
-        return MouseButtonFromInt(_GetMousePressReleaseData(structPointer, x, y));
+        return MouseButtonFromInt(_GetMousePressReleaseData!(structPointer, x, y));
     }
 
     KeyCode GetKeyPressReleaseData() {
         _validatePointer('GetKeyPressReleaseData');
-        return KeyCodeFromInt(_GetKeyPressReleaseData(structPointer));
+        return KeyCodeFromInt(_GetKeyPressReleaseData!(structPointer));
     }
 
 }
