@@ -32,7 +32,6 @@ class TextButton extends XYPointer {
   }
 
   bool onMouseDown(MouseButton button, V2 hit) {
-    print('TextButton onMouseDown');
     if (button != MouseButton.Left) return false;
 
     _isPressed = pos.hitTest(size, hit);
@@ -40,12 +39,10 @@ class TextButton extends XYPointer {
   }
 
   bool onMouseUp(MouseButton button, V2 hit) {
-    print('TextButton onMouseUp');
     if (!_isPressed) return false;
     _isPressed = false;
 
     if (pos.hitTest(size, hit)) {
-      print('TextButton pressed');
       onClick();
       return true;
     }

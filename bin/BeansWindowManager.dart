@@ -237,8 +237,8 @@ class BeansWindowManager extends XYPointer with CatchAll {
 
     _rw.GetSize(xPtr, yPtr);
     _quitBtn = TextButton(
-      pos: V2(xPtr.value - 80, 20),
-      text: 'Quit',
+      pos: V2(xPtr.value - 160, 20),
+      text: 'Quit Beans',
       onClick: _ren.quit,
       buttonCol: Colours.red
     );
@@ -346,12 +346,12 @@ class BeansWindowManager extends XYPointer with CatchAll {
     return collection.windows.map(mainSizeWithTitlebar).sum();
   }
 
-  /// get the current total cross axis size of all the windows in the collection.
+  /// get the current total cross axis size of all collections.
   /// 
   ///! Normally you should use [totalCrossAxisSize] as that returns the cross axis size of the [BeansRenderWindow].
-  /// Only use currentCrossAxisSize if you expect the collection to be incorrectly sized.
-  int currentCrossAxisSize(Collection collection) {
-    return collection.windows.map(crossSizeWithTitlebar).sum();
+  /// Only use currentCrossAxisSize if you expect collections to be incorrectly sized.
+  int currentCrossAxisSize() {
+    return _windows.map((collection) => crossSize(collection.windows.last)).sum();
   }
 
   /// get the current total main axis size of the [BeansRenderWindow]
@@ -604,12 +604,28 @@ class BeansWindowManager extends XYPointer with CatchAll {
   }
 
   /// Resize all windows in the collection on their main axis, so that they fit the collection. Relative size stays the same.
+  ///
+  ///! Doesn't respect minimum sizes - this is intended for scaling **up**.
   void resizeAll(Collection collection) {
     final totalMainSize = totalMainAxisSize();
     final currentMainSize = currentMainAxisSize(collection);
     final ratio = totalMainSize / currentMainSize;
     for (var wd in collection.windows) {
       setMainSize(wd, (mainSize(wd) * ratio).toInt());
+    }
+  }
+
+  /// Similar to [resizeAll], this resizes all collections on the cross axis, so that they fit the window. Their relative size
+  /// stays the same.
+  /// 
+  ///! Doesn't respect minimum sizes - this is intended for scaling **up**.
+  void resizeAllCollections() {
+    final totalCrossSize = totalCrossAxisSize();
+    final currentCrossSize = currentCrossAxisSize();
+    final ratio = totalCrossSize / currentCrossSize;
+    for (var collection in _windows) {
+      final thisCrossSize = crossSize(collection.windows.last);
+      collection.setCrossSize((thisCrossSize * ratio).toInt());
     }
   }
 
@@ -815,10 +831,16 @@ class BeansWindowManager extends XYPointer with CatchAll {
   }
 
   void _closeWindow(WindowData win) {
-    for (var collection in _windows) {
+    for (var i=0; i<_windows.length; i++) {
+      final collection = _windows[i];
       if (collection.windows.contains(win)) {
         collection.windows.remove(win);
-
+        resizeAll(collection);
+        if (collection.windows.isEmpty) {
+          _windows.removeAt(i);
+          resizeAllCollections();
+        }
+        return;
       }
     }
   }
@@ -884,9 +906,14 @@ class BeansWindowManager extends XYPointer with CatchAll {
         final eventPos = v2FromPointers();
         final button = event.GetMousePressReleaseData(xPtr, yPtr);
 
-        _setFocusedWindow();
-
+        //* order is important here!
+        // quit button takes highest importance - i just had a scenario where _setFocusedWindow was the culprit for
+        // the exception, but it was being called before _quitBtnMouseDown, so you couldn't quit.
+        // However, _setFocusedWindow still needs to be before _tbMouseDown, because _setFocusedWindow now focuses
+        // a window if the title bar was clicked.
         if (_quitBtnMouseDown(eventPos, button)) return;
+
+        _setFocusedWindow();
         if (_tbMouseDown(eventPos, button)) return;
 
         if (button == MouseButton.Right) {
