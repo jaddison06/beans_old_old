@@ -16,6 +16,14 @@ typedef enum {
     SDLInitCode_CreateRenderer_Fail = 4,
 } SDLInitCode;
 
+typedef enum {
+    Cursor_Arrow = 0,
+    Cursor_Hand = 1,
+    Cursor_SizeAll = 2,
+    Cursor_SizeVertical = 3,
+    Cursor_SizeHorizontal = 4,
+} Cursor;
+
 // ----------NATIVE/SDL/BEANSFONT.GEN----------
 
 // ----------NATIVE/SDL/IMAGE.GEN----------

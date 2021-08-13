@@ -6,6 +6,8 @@ import 'BeansWindowManager.dart';
 class V2 {
   int x, y;
 
+  static bool get _isColumns => BeansWindowManager.isColumns;
+
   /// Default constructor
   V2(this.x, this.y);
 
@@ -21,8 +23,12 @@ class V2 {
   
   /// Take a main size/pos and a cross size/pos and convert them into real coordinates
   V2.fromMC(int main, int cross) :
-    x = BeansWindowManager.isColumns ? cross : main,
-    y = BeansWindowManager.isColumns ? main : cross;
+    x = _isColumns ? cross : main,
+    y = _isColumns ? main : cross;
+  
+  
+  int get main  => _isColumns ? y : x;
+  int get cross => _isColumns ? x : y;
 
 
   V2 operator + (Object other) {

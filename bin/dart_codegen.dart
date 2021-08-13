@@ -30,6 +30,27 @@ String SDLInitCodeToString(SDLInitCode val) {
     }
 }
 
+enum Cursor {
+    Arrow,
+    Hand,
+    SizeAll,
+    SizeVertical,
+    SizeHorizontal,
+}
+
+Cursor CursorFromInt(int val) => Cursor.values[val];
+int CursorToInt(Cursor val) => Cursor.values.indexOf(val);
+
+String CursorToString(Cursor val) {
+    switch (val) {
+        case Cursor.Arrow: { return 'Arrow'; }
+        case Cursor.Hand: { return 'Hand'; }
+        case Cursor.SizeAll: { return 'SizeAll'; }
+        case Cursor.SizeVertical: { return 'SizeVertical'; }
+        case Cursor.SizeHorizontal: { return 'SizeHorizontal'; }
+    }
+}
+
 // ----------FUNC SIG TYPEDEFS FOR CLASSES----------
 
 // ----------RENDERWINDOW----------
@@ -57,6 +78,10 @@ typedef _libRenderWindow_class_RenderWindow_method_RWGetSize_sig = void Function
 // void Flush(void* struct_ptr)
 typedef _libRenderWindow_class_RenderWindow_method_Flush_native_sig = Void Function(Pointer<Void>);
 typedef _libRenderWindow_class_RenderWindow_method_Flush_sig = void Function(Pointer<Void>);
+
+// void SetCursor(void* struct_ptr, Cursor cursor)
+typedef _libRenderWindow_class_RenderWindow_method_SetCursor_native_sig = Void Function(Pointer<Void>, Int32);
+typedef _libRenderWindow_class_RenderWindow_method_SetCursor_sig = void Function(Pointer<Void>, int);
 
 // void SetColour(void* struct_ptr, int r, int g, int b, int a)
 typedef _libRenderWindow_class_RenderWindow_method_SetColour_native_sig = Void Function(Pointer<Void>, Int32, Int32, Int32, Int32);
@@ -103,6 +128,7 @@ class RenderWindow {
     static _libRenderWindow_class_RenderWindow_method_RWGetFrameCount_sig? _RWGetFrameCount;
     static _libRenderWindow_class_RenderWindow_method_RWGetSize_sig? _RWGetSize;
     static _libRenderWindow_class_RenderWindow_method_Flush_sig? _Flush;
+    static _libRenderWindow_class_RenderWindow_method_SetCursor_sig? _SetCursor;
     static _libRenderWindow_class_RenderWindow_method_SetColour_sig? _SetColour;
     static _libRenderWindow_class_RenderWindow_method_DrawPoint_sig? _DrawPoint;
     static _libRenderWindow_class_RenderWindow_method_DrawLine_sig? _DrawLine;
@@ -119,6 +145,7 @@ class RenderWindow {
             _RWGetFrameCount == null ||
             _RWGetSize == null ||
             _Flush == null ||
+            _SetCursor == null ||
             _SetColour == null ||
             _DrawPoint == null ||
             _DrawLine == null ||
@@ -135,6 +162,7 @@ class RenderWindow {
             _RWGetFrameCount = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_RWGetFrameCount_native_sig, _libRenderWindow_class_RenderWindow_method_RWGetFrameCount_sig>('RWGetFrameCount');
             _RWGetSize = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_RWGetSize_native_sig, _libRenderWindow_class_RenderWindow_method_RWGetSize_sig>('RWGetSize');
             _Flush = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_Flush_native_sig, _libRenderWindow_class_RenderWindow_method_Flush_sig>('Flush');
+            _SetCursor = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_SetCursor_native_sig, _libRenderWindow_class_RenderWindow_method_SetCursor_sig>('SetCursor');
             _SetColour = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_SetColour_native_sig, _libRenderWindow_class_RenderWindow_method_SetColour_sig>('SetColour');
             _DrawPoint = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DrawPoint_native_sig, _libRenderWindow_class_RenderWindow_method_DrawPoint_sig>('DrawPoint');
             _DrawLine = lib.lookupFunction<_libRenderWindow_class_RenderWindow_method_DrawLine_native_sig, _libRenderWindow_class_RenderWindow_method_DrawLine_sig>('DrawLine');
@@ -184,6 +212,11 @@ class RenderWindow {
     void Flush() {
         _validatePointer('Flush');
         return _Flush!(structPointer);
+    }
+
+    void SetCursor(Cursor cursor) {
+        _validatePointer('SetCursor');
+        return _SetCursor!(structPointer, CursorToInt(cursor));
     }
 
     void cSetColour(int r, int g, int b, int a) {

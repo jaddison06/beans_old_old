@@ -13,6 +13,7 @@ import 'Config.dart';
 import 'V2.dart';
 import 'TitleBarIcon.dart';
 import 'TextButton.dart';
+import 'BeansAssert.dart';
 
 extension on Iterable<int> {
   int sum() {
@@ -108,35 +109,59 @@ class Collection extends XYPointer with CatchAll {
     }
   }
 
-  bool _tbForEach(bool Function(WindowData, TitleBarIcon, int) cb) {
+  bool? _tbForEach(bool Function(WindowData, TitleBarIcon, int) cb) {
     return _forEachWithMainPos((wd, mainPos) => (
-        cb(wd, wd.cross, mainPos) ||
-        cb(wd, wd.dt   , mainPos)
+        (cb(wd, wd.cross, mainPos) ||
+        cb(wd, wd.dt   , mainPos)) ?
+        //! because of what goes on a *long* way up the call chain, this CANNOT return false. If you want falsy, it needs to be null.
+        true : null
     ));
   }
 
-  bool tbOnMouseMove(int crossPos, V2 mousePos) {
+  bool? tbOnMouseMove(int crossPos, V2 mousePos) {
     return _tbForEach((wd, icon, mainPos) => icon.onMouseMove(V2.fromMC(mainPos, crossPos), wd.size, mousePos));
   }
   
-  bool tbOnMouseDown(int crossPos, MouseButton button, V2 mousePos) {
+  bool? tbOnMouseDown(int crossPos, MouseButton button, V2 mousePos) {
     return _tbForEach((wd, icon, mainPos) => icon.onMouseDown(V2.fromMC(mainPos, crossPos), wd.size, button, mousePos));
   }
 
-  bool tbOnMouseUp(int crossPos, MouseButton button, V2 mousePos) {
+  bool? tbOnMouseUp(int crossPos, MouseButton button, V2 mousePos) {
     return _tbForEach((wd, icon, mainPos) => icon.onMouseUp(V2.fromMC(mainPos, crossPos), wd.size, button, mousePos));
   }
 
-  /// quits if [cb] returns `true`
-  bool _forEachWithMainPos(bool? Function(WindowData, int) cb) {
+
+  bool isOnCrossEdge(int crossPos, V2 mousePos) {
+    if (!isColumns) crossPos -= _conf.windowTitleBar.height;
+    return (mousePos.cross - crossPos).abs() <= BeansWindowManager.dragAcceptBoundary;
+  }
+
+  int? mainEdge(int crossPos, V2 mousePos) {
+    if (!isColumns) crossPos -= _conf.windowTitleBar.height;
+    return _forEachWithMainPos((wd, mainPos) {
+      if (isColumns) mainPos -= _conf.windowTitleBar.height;
+      final mainPos2 = mainPos + wd.size.main;
+      final crossPos2 = crossPos + wd.size.cross;
+      if (
+        mousePos.cross >= crossPos &&
+        mousePos.cross < crossPos2 &&
+        (mousePos.main - mainPos2).abs() <= BeansWindowManager.dragAcceptBoundary
+      ) {
+        return windows.indexOf(wd);
+      }
+    });
+  }
+
+  /// breaks if [cb] returns a non-null value
+  T? _forEachWithMainPos<T>(T? Function(WindowData, int) cb) {
     var mainPos = isColumns ? _conf.windowTitleBar.height : 0;
     for (var wd in windows) {
-      if (cb(wd, mainPos) == true) return true;
+      final res = cb(wd, mainPos);
+      if (res != null) return res;
 
       mainPos += isColumns ? wd.size.y : wd.size.x;
       if (isColumns) mainPos += _conf.windowTitleBar.height;
     }
-    return false;
   }
 
   void render(BeansRenderWindow rw, int crossPos) {
@@ -181,6 +206,44 @@ enum BeansWindowLayoutMode {
   Rows
 }
 
+/// When the user's dragging the mouse for a [BeansWindowManager] operation, what are they doing?
+enum WMDragType {
+  MainAxisResize,
+  CrossAxisResize,
+  Move
+}
+
+/// utility that holds info about a WM drag operation
+class DragInfo {
+  DragInfo({required this.dragType, this.resizeCollection, this.resizeIdx, this.movingWindow}) {
+    switch (dragType) {
+      case WMDragType.MainAxisResize: {
+        BeansAssert(resizeCollection != null, 'DragInfo initialized as MainAxisResize, but resizeCollection is null.');
+        BeansAssert(resizeIdx        != null, 'DragInfo initialized as MainAxisResize, but resizeIdx is null.');
+        break;
+      }
+      case WMDragType.CrossAxisResize: {
+        BeansAssert(resizeIdx != null, 'DragInfo initialized as CrossAxisResize, but resizeIdx is null.');
+        break;
+      }
+      case WMDragType.Move: {
+        BeansAssert(movingWindow != null, 'DragInfo initialized as Move, but resizeIdx is null.');
+      }
+    }
+  }
+
+  final WMDragType dragType;
+
+  // for a MainAxisResize, the collection containing the window being resized.
+  // for a CrossAxisResize, null.
+  final Collection? resizeCollection;
+  // for a MainAxisResize, the idx in _resizeCollection.windows of the FIRST window being resized.
+  // for a CrossAxisResize, the idx of the FIRST collection being resized.
+  final int? resizeIdx;
+  // for a Move, the window that is being dragged.
+  final WindowData? movingWindow;
+}
+
 /// BeansWindowManager is responsible for:
 /// - Rendering [BeansWindow]s
 /// - Turning the raw [Event]s from SDL into a more usable format
@@ -198,6 +261,12 @@ class BeansWindowManager extends XYPointer with CatchAll {
   late final TextButton _quitBtn;
   late final Image _forgor;
 
+  // how close do you have to be to the line in order to call it a drag
+  static final int dragAcceptBoundary = 8;
+
+  DragInfo? _drag;
+  var _cursor = Cursor.Arrow;
+
   final List<Collection> _windows = [];
   
   int get _windowCount => _windows.map((collection) => collection.windows.length).sum();
@@ -212,15 +281,15 @@ class BeansWindowManager extends XYPointer with CatchAll {
     }
   }
 
-  bool _forEachCollectionWithCrossPos(bool? Function(Collection, int) cb) {
+  T? _forEachCollectionWithCrossPos<T>(T? Function(Collection, int) cb) {
     var crossPos = isColumns ? 0 : _conf.windowTitleBar.height;
     for (var collection in _windows) {
-      if (cb(collection, crossPos) == true) return true;
+      final res = cb(collection, crossPos);
+      if (res != null) return res;
 
       crossPos += crossSize(collection.windows.last);
       if (!isColumns) crossPos += _conf.windowTitleBar.height;
     }
-    return false;
   }
 
   final List<BeansWindow> _testWindows = [];
@@ -383,6 +452,18 @@ class BeansWindowManager extends XYPointer with CatchAll {
       wd.size.x = newSize;
     } else {
       wd.size.y = newSize;
+    }
+  }
+
+  Cursor get mainCursor  => isColumns ? Cursor.SizeVertical : Cursor.SizeHorizontal;
+  Cursor get crossCursor => isColumns ? Cursor.SizeHorizontal : Cursor.SizeVertical;
+
+  /// wraps [BeansRenderWindow.SetCursor] so that we can call this every frame without actually
+  /// setting the cursor every frame (it's expensive)
+  void _setCursor(Cursor cursor) {
+    if (cursor != _cursor) {
+      _rw.SetCursor(cursor);
+      _cursor = cursor;
     }
   }
 
@@ -869,15 +950,31 @@ class BeansWindowManager extends XYPointer with CatchAll {
   // oh!!! abbreviations! tb here stands for title bar NOT text button
 
   bool _tbMouseMove(V2 mousePos) {
-    return _forEachCollectionWithCrossPos((collection, crossPos) => collection.tbOnMouseMove(crossPos, mousePos));
+    return _forEachCollectionWithCrossPos((collection, crossPos) => collection.tbOnMouseMove(crossPos, mousePos)) ?? false;
   }
 
   bool _tbMouseDown(V2 mousePos, MouseButton button) {
-    return _forEachCollectionWithCrossPos((collection, crossPos) => collection.tbOnMouseDown(crossPos, button, mousePos));
+    return _forEachCollectionWithCrossPos((collection, crossPos) => collection.tbOnMouseDown(crossPos, button, mousePos)) ?? false;
   }
 
   bool _tbMouseUp(V2 mousePos, MouseButton button) {
-    return _forEachCollectionWithCrossPos((collection, crossPos) => collection.tbOnMouseUp(crossPos, button, mousePos));
+    return _forEachCollectionWithCrossPos((collection, crossPos) => collection.tbOnMouseUp(crossPos, button, mousePos)) ?? false;
+  }
+
+
+  WMDragType? isPossibleDrag(V2 mousePos) {
+    return _forEachCollectionWithCrossPos((collection, crossPos) {
+      //* ordered this way for two reasons - cross edge is more important so that should take priority, and main edge could take a long
+      // time so we don't want to call it unnecessarily.
+      if (collection.isOnCrossEdge(crossPos, mousePos)) {
+        return WMDragType.CrossAxisResize;
+      } else if (collection.mainEdge(crossPos, mousePos) != null) {
+        // todo: it's inefficient to calculate mainEdge here and *not* use the value, seeing as it iterates over every window
+        // in the collection. Maybe this whole function should just set _drag, and then we have a flag to say whether it's
+        // an actual confirmed drag or just a pointer change
+        return WMDragType.MainAxisResize;
+      }
+    });
   }
 
   void _event(Event event) {
@@ -895,6 +992,17 @@ class BeansWindowManager extends XYPointer with CatchAll {
       case SDLEventType.MouseMove: {
         event.GetMouseMoveData(xPtr, yPtr);
         final eventPos = v2FromPointers();
+
+        //* this has to come before the tbMouseMove - if we move from a drag zone onto an icon then
+        // the icon will cause tbMouseMove to return, so the cursor won't be reset.
+        final drag = isPossibleDrag(eventPos);
+        if (drag == WMDragType.MainAxisResize) {
+          _setCursor(mainCursor);
+        } else if (drag == WMDragType.CrossAxisResize) {
+          _setCursor(crossCursor);
+        } else {
+          _setCursor(Cursor.Arrow);
+        }
 
         if (_tbMouseMove(eventPos)) return;
 

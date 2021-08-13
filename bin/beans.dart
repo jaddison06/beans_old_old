@@ -17,6 +17,9 @@ class Beans with CatchAll {
       _panic(SDLInitCodeToString(_rw.errorCode));
     }
 
+    // make sure we start with the arrow
+    _rw.SetCursor(Cursor.Arrow);
+
     FontCache.defaultFamily = 'res/DroidSansMono/DroidSansMono.ttf';
     FontCache.defaultPt = 24;
     

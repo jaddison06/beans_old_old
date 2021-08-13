@@ -9,6 +9,14 @@ enum SDLInitCode {
     CreateRenderer_Fail // SDL_CreateRenderer() failed
 }
 
+enum Cursor {
+    Arrow
+    Hand
+    SizeAll
+    SizeVertical
+    SizeHorizontal
+}
+
 class RenderWindow {
     @Initializer()
     void* InitRenderWindow(char* title)
@@ -27,6 +35,8 @@ class RenderWindow {
     void RWGetSize(int* width, int* height)
 
     void Flush()
+
+    void SetCursor(Cursor cursor)
 
     // there's a few like this where i change the name to start with 'c'. this is because
     // i'm going to create a sexies implementation at the Dart level, which will have the actual name.

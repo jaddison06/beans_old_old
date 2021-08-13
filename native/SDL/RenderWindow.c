@@ -32,6 +32,28 @@ void RWGetSize(RenderWindow* rw, int* width, int* height) {
     //printf("(%ix%i)\n", *width, *height);
 }
 
+Cursors* InitCursors() {
+    Cursors* out = malloc(sizeof(Cursors));
+
+    out->arrow           = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+    out->hand            = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+    out->sizeAll        = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
+    out->sizeVertical   = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
+    out->sizeHorizontal = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
+
+    return out;
+}
+
+void DestroyCursors(Cursors* cursors) {
+    SDL_FreeCursor(cursors->arrow);
+    SDL_FreeCursor(cursors->hand);
+    SDL_FreeCursor(cursors->sizeAll);
+    SDL_FreeCursor(cursors->sizeVertical);
+    SDL_FreeCursor(cursors->sizeHorizontal);
+
+    free(cursors);
+}
+
 RenderWindow* LogSDLError(RenderWindow* win, int exitCode) {
     printf("SDL error: %s\n", SDL_GetError());
     if (win->win != NULL) {
@@ -67,6 +89,8 @@ RenderWindow* InitRenderWindow(const char* title) {
         return LogSDLError(out, SDLInitCode_CreateRenderer_Fail);
     }
 
+    out->cursors = InitCursors();
+
     SDL_SetRenderDrawBlendMode(out->ren, SDL_BLENDMODE_BLEND);
 
     out->errorCode = SDLInitCode_Success;
@@ -76,11 +100,22 @@ RenderWindow* InitRenderWindow(const char* title) {
 }
 
 void DestroyRenderWindow(RenderWindow* rw) {
+    DestroyCursors(rw->cursors);
     SDL_DestroyRenderer(rw->ren);
     SDL_DestroyWindow(rw->win);
     TTF_Quit();
     SDL_Quit();
     free(rw);
+}
+
+void SetCursor(RenderWindow* rw, Cursor cursor) {
+    switch (cursor) {
+        case Cursor_Arrow:          return SDL_SetCursor(rw->cursors->arrow);
+        case Cursor_Hand:           return SDL_SetCursor(rw->cursors->hand);
+        case Cursor_SizeAll:        return SDL_SetCursor(rw->cursors->sizeAll);
+        case Cursor_SizeVertical:   return SDL_SetCursor(rw->cursors->sizeVertical);
+        case Cursor_SizeHorizontal: return SDL_SetCursor(rw->cursors->sizeHorizontal);
+    }
 }
 
 void SetColour(RenderWindow* rw, int r, int g, int b, int a) {
