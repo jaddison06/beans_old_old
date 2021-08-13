@@ -1,4 +1,5 @@
 import 'BeansWindow.dart';
+import 'beans.dart';
 import 'dart_codegen.dart';
 import 'BeansRenderer.dart';
 import 'dart:ffi';
@@ -10,19 +11,12 @@ import 'CatchAll.dart';
 import 'Colour.dart';
 import 'Config.dart';
 import 'V2.dart';
+import 'TitleBarIcon.dart';
 
 extension on Iterable<int> {
   int sum() {
     return isEmpty ? 0 : reduce((value, element) => value + element);
   }
-}
-
-V2 toV2(int main, int cross) {
-  final isColumns = BeansWindowManager.layoutMode == BeansWindowLayoutMode.Columns;
-  return V2(
-    isColumns ? cross : main,
-    isColumns ? main : cross
-  );
 }
 
 /// WindowData represents metadata about a [BeansWindow], needed by the [BeansWindowManager].
@@ -33,14 +27,32 @@ class WindowData {
   BeansWindow window;
   final _conf = Config.instance;
 
-  bool _isHoveringCross = false;
-  bool _isHoveringDT = false;
-  bool _isClickingCross = false;
+  final void Function(WindowData) onDragStart;
+  final void Function(WindowData) onClose;
+  late final TitleBarIcon cross;
+  late final TitleBarIcon dt;
+
+  WindowData({
+    required this.size,
+    required this.isFocused,
+    required this.isFloating,
+    required this.window,
+    required this.onClose,
+    required this.onDragStart
+  }) {
+    cross = TitleBarCross(() => onClose(this));
+    dt = TitleBarDragTarget(() => onDragStart(this));
+  }
 
   /// Tests if the event at [hit] occured inside this window.
   /// [hitTest] is *inclusive* on the left/top and *exclusive* on the right/bottom.
   bool hitTest(V2 windowPos, V2 hit) {
     return windowPos.hitTest(size, hit);
+  }
+
+  bool hitTestWithTitleBar(V2 windowPos, V2 hit) {
+    final tbHeight = _conf.windowTitleBar.height;
+    return (windowPos + V2(0, -tbHeight)).hitTest(size, hit + V2(0, tbHeight));
   }
 
   /// Tests if the event at [hit] occured inside this window's title bar.
@@ -68,126 +80,12 @@ class WindowData {
     // bar
     rw.FillRect(tbPos, tbSize, _conf.windowTitleBar.col);
     
-    rw.SetColour(_conf.windowTitleBar.iconCol);
-
-    // Draw boxes underneath icons
-    if (_isHoveringCross) {
-      _drawIconBox(rw, windowPos, _conf.windowTitleBar.crossROffset, false);
-    } else if (_isHoveringDT) {
-      _drawIconBox(rw, windowPos, _conf.windowTitleBar.dtROffset, false);
-    } else if (_isClickingCross) {
-      _drawIconBox(rw, windowPos, _conf.windowTitleBar.crossROffset, true);
-    }
-
-    _drawCrossHitbox(rw, windowPos);
-    _drawDtHitbox(rw, windowPos);
-
-    _drawCross(rw, windowPos);
-    _drawDragTarget(rw, windowPos);
-  }
-
-  void _drawIconBox(BeansRenderWindow rw, V2 windowPos, int iconROffset, bool clicking) {
-    rw.FillRect(_iconPos(windowPos, iconROffset), _iconSize(), clicking ? _conf.windowTitleBar.iconClickCol : _conf.windowTitleBar.iconHoverCol);
-  }
-
-  int _iconY(int windowY) {
-    final tbY = windowY - _conf.windowTitleBar.height;
-    final padding = (_conf.windowTitleBar.height - _conf.windowTitleBar.iconSize) ~/ 2;
-    return tbY + padding;
-  }
-
-  V2 _iconSize() => V2.square(_conf.windowTitleBar.iconSize);
-
-  V2 _iconPos(V2 windowPos, int rOffset) {
-    final tbX2 = x2(windowPos.x);
-    return V2(
-      tbX2 - rOffset,
-      _iconY(windowPos.y)
-    );
-  }
-
-  void _drawCross(BeansRenderWindow rw, V2 windowPos) {
-    final pos = _iconPos(windowPos, _conf.windowTitleBar.crossROffset);
-    final pos2 = pos + _iconSize();
-    rw.DrawLine(pos, pos2);
-    rw.DrawLine(
-      V2(pos2.x, pos.y),
-      V2(pos.x, pos2.y)
-    );
-  }
-
-  void _drawDragTarget(BeansRenderWindow rw, V2 windowPos) {
-    final pos = _iconPos(windowPos, _conf.windowTitleBar.dtROffset);
-    final size = _conf.windowTitleBar.iconSize;
-    final thickness = 3;
-    // not the distance between a's end and b's start, but between a's start and b's start.
-    final gap = (size / 2) - (thickness / 2);
-    for (var i=0; i<3; i++) {
-      for (var j=0; j<3; j++) {
-        final offset = V2(
-          (i * gap).toInt(),
-          (j * gap).toInt()
-        );
-        rw.FillRect(
-          pos + offset,
-          V2.square(thickness)
-        );
-      }
-    }
-  }
-
-  void _drawIconHitbox(BeansRenderWindow rw, V2 windowPos, int rOffset) {
-    rw.DrawRect(
-      _iconPos(windowPos, rOffset),
-      _iconSize(),
-      Colours.black
-    );
-  }
-
-  void _drawCrossHitbox(BeansRenderWindow rw, V2 windowPos) {
-    _drawIconHitbox(rw, windowPos, _conf.windowTitleBar.crossROffset);
-  }
-  void _drawDtHitbox(BeansRenderWindow rw, V2 windowPos) {
-    _drawIconHitbox(rw, windowPos, _conf.windowTitleBar.dtROffset);
-  }
-
-  bool _isInIcon(V2 windowPos, int iconROffset, V2 hit) {
-    final ip = _iconPos(windowPos, iconROffset);
-    final out = _iconPos(windowPos, iconROffset).hitTest(_iconSize(), hit);
-    print('isInIcon with icon @ $ip, hit at $hit -> $out');
-    return out;
-  }
-
-  /// check if a V2 is within the close button
-  bool isInCross     (V2 windowPos, V2 hit) => _isInIcon(windowPos, _conf.windowTitleBar.crossROffset, hit);
-  /// check if a V2 is within the drag target
-  bool isInDragTarget(V2 windowPos, V2 hit) => _isInIcon(windowPos, _conf.windowTitleBar.dtROffset, hit);
-
-  /// Render any hover boxes
-  bool renderHovers(V2 windowPos, V2 mousePos) {
-    _isHoveringCross = isInCross(windowPos, mousePos);
-    _isHoveringDT = isInDragTarget(windowPos, mousePos);
-    return _isHoveringCross || _isHoveringDT;
-  }
-
-  /// Render any click boxes.
-  /// 
-  /// This *DOES NOT* mean the click is confirmed - it could get cancelled. This just gets called when the mouse is down.
-  bool renderMouseIsDown(V2 windowPos, V2 mousePos) {
-    _isClickingCross = isInCross(windowPos, mousePos);
-    return _isClickingCross;
-    // don't bother checking the drag target - if the user puts their mouse down on it, special things will happen anyway
+    cross.render(rw, windowPos, size);
+    dt.render(rw, windowPos, size);
   }
 
   int x2(int x) => x + size.x;
   int y2(int y) => y + size.y;
-
-  WindowData({
-    required this.size,
-    required this.isFocused,
-    required this.isFloating,
-    required this.window
-  });
 }
 
 /// A row or column of windows
@@ -197,7 +95,7 @@ class Collection extends XYPointer with CatchAll {
 
   final windows = <WindowData>[];
 
-  bool get isColumns => BeansWindowManager.layoutMode == BeansWindowLayoutMode.Columns;
+  bool get isColumns => BeansWindowManager.isColumns;
 
   void setCrossSize(int newCrossSize) {
     for (var wd in windows) {
@@ -209,23 +107,41 @@ class Collection extends XYPointer with CatchAll {
     }
   }
 
-  bool renderHovers(int crossPos, V2 event) {
+  bool tbOnMouseMove(int crossPos, V2 mousePos) {
     var out = false;
     _forEachWithMainPos((wd, mainPos) {
-      out = wd.renderHovers(toV2(mainPos, crossPos), event);
+      out = (
+        wd.cross.onMouseMove(V2.fromMC(mainPos, crossPos), wd.size, mousePos) ||
+        wd.dt   .onMouseMove(V2.fromMC(mainPos, crossPos), wd.size, mousePos)
+      );
       return out;
     });
     return out;
   }
-  bool renderMouseIsDown(int crossPos, V2 event) {
+  
+  bool tbOnMouseDown(int crossPos, MouseButton button, V2 mousePos) {
     var out = false;
     _forEachWithMainPos((wd, mainPos) {
-      out = wd.renderHovers(toV2(mainPos, crossPos), event);
+      out = (
+        wd.cross.onMouseDown(V2.fromMC(mainPos, crossPos), wd.size, button, mousePos) ||
+        wd.dt   .onMouseDown(V2.fromMC(mainPos, crossPos), wd.size, button, mousePos)
+      );
       return out;
     });
     return out;
   }
 
+  bool tbOnMouseUp(int crossPos, MouseButton button, V2 mousePos) {
+    var out = false;
+    _forEachWithMainPos((wd, mainPos) {
+      out = (
+        wd.cross.onMouseUp(V2.fromMC(mainPos, crossPos), wd.size, button, mousePos) ||
+        wd.dt   .onMouseUp(V2.fromMC(mainPos, crossPos), wd.size, button, mousePos)
+      );
+      return out;
+    });
+    return out;
+  }
 
   /// quits if [cb] returns `true`
   void _forEachWithMainPos(bool? Function(WindowData, int) cb) {
@@ -240,7 +156,7 @@ class Collection extends XYPointer with CatchAll {
 
   void render(BeansRenderWindow rw, int crossPos) {
     _forEachWithMainPos((wd, mainPos) {
-      final pos = toV2(mainPos, crossPos);
+      final pos = V2.fromMC(mainPos, crossPos);
       catchAll(() {
         wd.render(
           rw,
@@ -255,18 +171,19 @@ class Collection extends XYPointer with CatchAll {
     });
   }
 
-  WindowData? hitTest(V2 hit, int crossPos) {
+  WindowData? hitTest(V2 hit, int crossPos, [bool withTitlebar = false]) {
     WindowData? out;
     _forEachWithMainPos((wd, mainPos) {
-      if (
-        wd.hitTest(
-          toV2(mainPos, crossPos),
-          hit
-        )
-      ) {
-        out = wd;
-        return true;
+      final pos = V2.fromMC(mainPos, crossPos);
+      bool res;
+      if (withTitlebar) {
+        res = wd.hitTestWithTitleBar(pos, hit);
+      } else {
+        res = wd.hitTest(pos, hit);
       }
+
+      if (res) out = wd;
+      return res;
     });
     return out;
   }
@@ -290,8 +207,6 @@ class BeansWindowManager extends XYPointer with CatchAll {
   final BeansRenderWindow _rw;
 
   final _conf = Config.instance;
-
-  bool mouseIsDown = false;
 
   String? panicMsg;
 
@@ -452,15 +367,17 @@ class BeansWindowManager extends XYPointer with CatchAll {
   void addWindowToCollection(BeansWindow win, Collection collection, {required int mainSize_, required int crossSize_, bool focus = true}) {
     collection.windows.add(
       WindowData(
-        size: toV2(mainSize_, crossSize_),
+        size: V2.fromMC(mainSize_, crossSize_),
         window: win,
         isFloating: false,
-        isFocused: focus
+        isFocused: focus,
+        onClose: (_){},
+        onDragStart: (_){}
       )
     );
   }
 
-  bool get isColumns => layoutMode == BeansWindowLayoutMode.Columns;
+  static bool get isColumns => layoutMode == BeansWindowLayoutMode.Columns;
 
   /// Check if resizing [collectionToResize] to [newCrossSize] would cause the layout to overflow.
   bool wouldOverflow(Collection collectionToResize, int newCrossSize) {
@@ -853,39 +770,46 @@ class BeansWindowManager extends XYPointer with CatchAll {
     });
     catchAll(() {
       // debug drawing here!
-      rw.DrawText('deez nuts', V2.square(69), Colours.black);
+      rw.DrawText('deez nuts', V2.square(30), Colours.black);
     }, gpanic);
   }
 
   /// update the focused window based on [_x] and [_y]
   void _setFocusedWindow() {
     _forEachCollectionWithCrossPos((collection, crossPos) {
-      final wd = collection.hitTest(v2FromPointers(), crossPos);
+      final wd = collection.hitTest(v2FromPointers(), crossPos, true);
       if (wd != null) {
         wd.isFocused = true;
         return true;
       }
     });
   }
-
-  /// possibly update title bar hover/click boxes on a mouse move event
-  /// 
-  /// returns whether an update was performed
-  bool _updateTitleBarOnMouseMove(V2 eventPos) {
-    var didUpdateTitleBar = false;
+  
+  bool _tbMouseMove(V2 mousePos) {
+    var out = false;
     _forEachCollectionWithCrossPos((collection, crossPos) {
-      if (mouseIsDown) {
-        didUpdateTitleBar = collection.renderMouseIsDown(crossPos, eventPos);
-      } else {
-        didUpdateTitleBar = collection.renderHovers(crossPos, eventPos);
-      }
-      return didUpdateTitleBar;
+      out = collection.tbOnMouseMove(crossPos, mousePos);
+      return out;
     });
-    return didUpdateTitleBar;
+    return out;
   }
 
-  bool _updateTitleBarOnMouseUp(V2 eventPos) {
-    return false;
+  bool _tbMouseDown(V2 mousePos, MouseButton button) {
+    var out = false;
+    _forEachCollectionWithCrossPos((collection, crossPos) {
+      out = collection.tbOnMouseDown(crossPos, button, mousePos);
+      return out;
+    });
+    return out;
+  }
+
+  bool _tbMouseUp(V2 mousePos, MouseButton button) {
+    var out = false;
+    _forEachCollectionWithCrossPos((collection, crossPos) {
+      out = collection.tbOnMouseUp(crossPos, button, mousePos);
+      return out;
+    });
+    return out;
   }
 
   void _event(Event event) {
@@ -904,17 +828,19 @@ class BeansWindowManager extends XYPointer with CatchAll {
         event.GetMouseMoveData(xPtr, yPtr);
         final eventPos = v2FromPointers();
 
-        if (_updateTitleBarOnMouseMove(eventPos)) return;
+        if (_tbMouseMove(eventPos)) return;
 
         _focusedWindow?.window.onMouseMove(eventPos);
         break;
       }
 
       case SDLEventType.MouseDown: {
-        mouseIsDown = true;
-
+        final eventPos = v2FromPointers();
         final button = event.GetMousePressReleaseData(xPtr, yPtr);
+
         _setFocusedWindow();
+
+        if (_tbMouseDown(eventPos, button)) return;
 
         if (button == MouseButton.Right) {
           _ren.quit();
@@ -922,17 +848,15 @@ class BeansWindowManager extends XYPointer with CatchAll {
           addNextTest();
         }
         
-        _focusedWindow?.window.onMouseDown(v2FromPointers(), button);
+        _focusedWindow?.window.onMouseDown(eventPos, button);
         break;
       }
 
       case SDLEventType.MouseUp: {
-        mouseIsDown = false;
-
         final button = event.GetMousePressReleaseData(xPtr, yPtr);
         final eventPos = v2FromPointers();
 
-        if (_updateTitleBarOnMouseUp(eventPos)) return;
+        if (_tbMouseUp(eventPos, button)) return;
 
         _focusedWindow?.window.onMouseUp(eventPos, button);
         break;

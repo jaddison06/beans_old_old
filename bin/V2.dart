@@ -1,18 +1,28 @@
+import 'BeansWindowManager.dart';
+
 /// Utility for working with 2D positions or sizes
 ///
 /// Same as Colour in that everything's mutable so you can use .. to make & chain changes.
 class V2 {
   int x, y;
+
+  /// Default constructor
   V2(this.x, this.y);
 
+  /// V2 at (0, 0)
   V2.origin() :
     x = 0,
     y = 0;
   
+  /// V2 with [x] and [y] both at [val]
   V2.square(int val) :
     x = val,
     y = val;
-
+  
+  /// Take a main size/pos and a cross size/pos and convert them into real coordinates
+  V2.fromMC(int main, int cross) :
+    x = BeansWindowManager.isColumns ? cross : main,
+    y = BeansWindowManager.isColumns ? main : cross;
 
   V2 operator + (Object other) {
     switch (other.runtimeType) {
