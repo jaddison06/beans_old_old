@@ -29,7 +29,7 @@ class WindowData {
   BeansWindow window;
   final _conf = Config.instance;
 
-  final void Function(WindowData) onDragStart;
+  final void Function(WindowData, V2, V2) onDragStart;
   final void Function(WindowData) onClose;
   late final TitleBarIcon cross;
   late final TitleBarIcon dt;
@@ -43,7 +43,7 @@ class WindowData {
     required this.onDragStart
   }) {
     cross = TitleBarCross(() => onClose(this));
-    dt = TitleBarDragTarget(() => onDragStart(this));
+    dt = TitleBarDragTarget((windowPos, mousePos) => onDragStart(this, windowPos, mousePos));
   }
 
   /// Tests if the event at [hit] occured inside this window.
@@ -139,6 +139,7 @@ class Collection extends XYPointer with CatchAll {
   int? mainEdge(int crossPos, V2 mousePos) {
     if (!isColumns) crossPos -= _conf.windowTitleBar.height;
     return _forEachWithMainPos((wd, mainPos) {
+      if (wd == windows.last) return null;
       if (isColumns) mainPos -= _conf.windowTitleBar.height;
       final mainPos2 = mainPos + wd.size.main;
       final crossPos2 = crossPos + wd.size.cross;
@@ -215,24 +216,40 @@ enum WMDragType {
 
 /// utility that holds info about a WM drag operation
 class DragInfo {
-  DragInfo({required this.dragType, this.resizeCollection, this.resizeIdx, this.movingWindow}) {
+  DragInfo({
+    required this.dragType,
+    required this.dragStartPos,
+    this.resizeCollection,
+    this.resizeIdx,
+    this.initialSize1,
+    this.initialSize2,
+    this.movingWindow,
+    this.windowStartPos
+  }) {
     switch (dragType) {
       case WMDragType.MainAxisResize: {
         BeansAssert(resizeCollection != null, 'DragInfo initialized as MainAxisResize, but resizeCollection is null.');
         BeansAssert(resizeIdx        != null, 'DragInfo initialized as MainAxisResize, but resizeIdx is null.');
+        BeansAssert(initialSize1     != null, 'DragInfo initialized as MainAxisResize, but initialSize1 is null.');
+        BeansAssert(initialSize2     != null, 'DragInfo initialized as MainAxisResize, but initialSize2 is null.');
         break;
       }
       case WMDragType.CrossAxisResize: {
-        BeansAssert(resizeIdx != null, 'DragInfo initialized as CrossAxisResize, but resizeIdx is null.');
+        BeansAssert(resizeIdx        != null, 'DragInfo initialized as CrossAxisResize, but resizeIdx is null.');
+        BeansAssert(initialSize1     != null, 'DragInfo initialized as CrossAxisResize, but initialSize1 is null.');
+        BeansAssert(initialSize2     != null, 'DragInfo initialized as CrossAxisResize, but initialSize2 is null.');
         break;
       }
       case WMDragType.Move: {
-        BeansAssert(movingWindow != null, 'DragInfo initialized as Move, but resizeIdx is null.');
+        BeansAssert(movingWindow != null,   'DragInfo initialized as Move, but movingWindow is null.');
+        BeansAssert(windowStartPos != null, 'DragInfo initialized as Move, but windowStartPos is null.');
       }
     }
   }
 
   final WMDragType dragType;
+
+  final V2 dragStartPos;
 
   // for a MainAxisResize, the collection containing the window being resized.
   // for a CrossAxisResize, null.
@@ -240,8 +257,16 @@ class DragInfo {
   // for a MainAxisResize, the idx in _resizeCollection.windows of the FIRST window being resized.
   // for a CrossAxisResize, the idx of the FIRST collection being resized.
   final int? resizeIdx;
+
+  // for a MainAxisResize, the initial main axis sizes of the two windows.
+  // for a CrossAxisResize, the initial cross axis sizes of the two collections.
+  final int? initialSize1;
+  final int? initialSize2;
+
   // for a Move, the window that is being dragged.
   final WindowData? movingWindow;
+  // for a Move, the initial position of the window that is being dragged
+  final V2? windowStartPos;
 }
 
 /// BeansWindowManager is responsible for:
@@ -477,7 +502,7 @@ class BeansWindowManager extends XYPointer with CatchAll {
         isFloating: false,
         isFocused: focus,
         onClose: _closeWindow,
-        onDragStart: (_){}
+        onDragStart: wdDragStart
       )
     );
   }
@@ -961,20 +986,59 @@ class BeansWindowManager extends XYPointer with CatchAll {
     return _forEachCollectionWithCrossPos((collection, crossPos) => collection.tbOnMouseUp(crossPos, button, mousePos)) ?? false;
   }
 
+  Cursor dragCursor() {
+    if (_drag == null) return Cursor.Arrow;
+    switch (_drag!.dragType) {
+      case WMDragType.CrossAxisResize: return crossCursor;
+      case WMDragType.MainAxisResize: return mainCursor;
+      case WMDragType.Move: return Cursor.SizeAll;
+    }
+  }
 
-  WMDragType? isPossibleDrag(V2 mousePos) {
-    return _forEachCollectionWithCrossPos((collection, crossPos) {
+  /// Passed to [WindowData]s as a callback for onDragStart
+  void wdDragStart(WindowData wd, V2 windowPos, V2 mousePos) {
+    _drag = DragInfo(
+      dragType: WMDragType.Move,
+      dragStartPos: mousePos,
+      movingWindow: wd,
+      windowStartPos: windowPos
+    );
+    // hacky but it works to remove the window and possibly the collection from the layout
+    //
+    // however it means we've only got one reference to the WindowData now - in _drag. so don't lose it !!!
+    _closeWindow(wd);
+  }
+
+  bool getDrag(V2 mousePos) {
+    _forEachCollectionWithCrossPos((collection, crossPos) {
       //* ordered this way for two reasons - cross edge is more important so that should take priority, and main edge could take a long
       // time so we don't want to call it unnecessarily.
-      if (collection.isOnCrossEdge(crossPos, mousePos)) {
-        return WMDragType.CrossAxisResize;
-      } else if (collection.mainEdge(crossPos, mousePos) != null) {
-        // todo: it's inefficient to calculate mainEdge here and *not* use the value, seeing as it iterates over every window
-        // in the collection. Maybe this whole function should just set _drag, and then we have a flag to say whether it's
-        // an actual confirmed drag or just a pointer change
-        return WMDragType.MainAxisResize;
+      if (collection.isOnCrossEdge(crossPos, mousePos) && collection != _windows.first) {
+        final idx = _windows.indexOf(collection);
+        _drag = DragInfo(
+          dragType: WMDragType.CrossAxisResize,
+          dragStartPos: mousePos,
+          resizeIdx: idx,
+          initialSize1: crossSize(collection.windows.last),
+          initialSize2: crossSize(_windows[idx + 1].windows.last)
+        );
+        // any non-null value
+        return 0;
+      }
+      final mainResizeIdx = collection.mainEdge(crossPos, mousePos);
+      if (mainResizeIdx != null) {
+        _drag = DragInfo(
+          dragType: WMDragType.MainAxisResize,
+          dragStartPos: mousePos,
+          resizeCollection: collection,
+          resizeIdx: mainResizeIdx,
+          initialSize1: collection.windows[mainResizeIdx    ].size.main,
+          initialSize2: collection.windows[mainResizeIdx + 1].size.main
+        );
+        return 0;
       }
     });
+    return _drag != null;
   }
 
   void _event(Event event) {
@@ -993,20 +1057,47 @@ class BeansWindowManager extends XYPointer with CatchAll {
         event.GetMouseMoveData(xPtr, yPtr);
         final eventPos = v2FromPointers();
 
-        //* this has to come before the tbMouseMove - if we move from a drag zone onto an icon then
-        // the icon will cause tbMouseMove to return, so the cursor won't be reset.
-        final drag = isPossibleDrag(eventPos);
-        if (drag == WMDragType.MainAxisResize) {
-          _setCursor(mainCursor);
-        } else if (drag == WMDragType.CrossAxisResize) {
-          _setCursor(crossCursor);
+        if (_drag != null) {
+          // do drag !!!
+          switch (_drag!.dragType) {
+            case WMDragType.CrossAxisResize: {
+              break;
+            }
+            case WMDragType.MainAxisResize: {
+              final collection = _drag!.resizeCollection!;
+              final diff = eventPos.main - _drag!.dragStartPos.main;
+              final idx = _drag!.resizeIdx!;
+              final win1 = collection.windows[idx];
+              final win2 = collection.windows[idx + 1];
+              final newSize1 = _drag!.initialSize1! + diff;
+              final newSize2 = _drag!.initialSize2! - diff;
+              if (
+                newSize1 < minMainSize(win1.window) ||
+                newSize2 < minMainSize(win2.window)
+              ) break;
+              setMainSize(win1, newSize1);
+              setMainSize(win2, newSize2);
+              break;
+            }
+            case WMDragType.Move: {
+              break;
+            }
+          }
         } else {
-          _setCursor(Cursor.Arrow);
+          // we're not actually looking for a drag, we just want to change the cursor, so we'll reset _drag
+          // to null.
+          getDrag(eventPos);
+
+          //* this has to come before the tbMouseMove - if we move from a drag zone onto an icon then
+          // the icon will cause tbMouseMove to return, so the cursor won't be reset.
+          _setCursor(dragCursor());
+          
+          _drag = null;
+
+          if (_tbMouseMove(eventPos)) return;
+
+          _focusedWindow?.window.onMouseMove(eventPos);
         }
-
-        if (_tbMouseMove(eventPos)) return;
-
-        _focusedWindow?.window.onMouseMove(eventPos);
         break;
       }
 
@@ -1021,6 +1112,8 @@ class BeansWindowManager extends XYPointer with CatchAll {
         // a window if the title bar was clicked.
         if (_quitBtnMouseDown(eventPos, button)) return;
 
+        if (getDrag(eventPos)) return;
+        
         _setFocusedWindow();
         if (_tbMouseDown(eventPos, button)) return;
 
@@ -1031,6 +1124,7 @@ class BeansWindowManager extends XYPointer with CatchAll {
         }
         
         _focusedWindow?.window.onMouseDown(eventPos, button);
+        
         break;
       }
 
@@ -1039,9 +1133,27 @@ class BeansWindowManager extends XYPointer with CatchAll {
         final eventPos = v2FromPointers();
 
         if (_quitBtnMouseUp(eventPos, button)) return;
-        if (_tbMouseUp(eventPos, button)) return;
 
-        _focusedWindow?.window.onMouseUp(eventPos, button);
+        if (_drag != null) {
+          // complete the drag!!
+          switch (_drag!.dragType) {
+            case WMDragType.CrossAxisResize: {
+              break;
+            }
+            case WMDragType.MainAxisResize: {
+              break;
+            }
+            case WMDragType.Move: {
+              break;
+            }
+          }
+          _drag = null;
+          _setCursor(dragCursor());
+        } else {
+          if (_tbMouseUp(eventPos, button)) return;
+
+          _focusedWindow?.window.onMouseUp(eventPos, button);
+        }
         break;
       }
 

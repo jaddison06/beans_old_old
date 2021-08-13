@@ -9,7 +9,7 @@ abstract class TitleBarIcon {
   bool isHovered = false;
   bool isPressed = false;
 
-  final void Function()? mouseDownCallback;
+  final void Function(V2, V2)? mouseDownCallback;
   final void Function()? successfulClickCallback;
 
   TitleBarIcon({this.mouseDownCallback, this.successfulClickCallback});
@@ -26,7 +26,7 @@ abstract class TitleBarIcon {
 
     isPressed = hitTest(windowPos, windowSize, mousePos);
 
-    if (isPressed) mouseDownCallback?.call();
+    if (isPressed) mouseDownCallback?.call(windowPos, mousePos);
 
     return isPressed;
   }
@@ -98,7 +98,7 @@ class TitleBarCross extends TitleBarIcon {
 }
 
 class TitleBarDragTarget extends TitleBarIcon {
-  TitleBarDragTarget(void Function() onDragStart) : super(mouseDownCallback: onDragStart);
+  TitleBarDragTarget(void Function(V2, V2) onDragStart) : super(mouseDownCallback: onDragStart);
   @override
   int get rOffset => conf.windowTitleBar.dtROffset;
   @override
