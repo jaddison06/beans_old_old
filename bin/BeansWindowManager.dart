@@ -79,7 +79,7 @@ class WindowData {
     rw.FillRect(tbPos, tbSize, window.titleBarBGCol);
     // bar
     rw.FillRect(tbPos, tbSize, _conf.windowTitleBar.col);
-    
+
     cross.render(rw, windowPos, size);
     dt.render(rw, windowPos, size);
   }
@@ -107,40 +107,28 @@ class Collection extends XYPointer with CatchAll {
     }
   }
 
-  bool tbOnMouseMove(int crossPos, V2 mousePos) {
+  bool _tbForEach(bool Function(WindowData, TitleBarIcon, int) cb) {
     var out = false;
     _forEachWithMainPos((wd, mainPos) {
       out = (
-        wd.cross.onMouseMove(V2.fromMC(mainPos, crossPos), wd.size, mousePos) ||
-        wd.dt   .onMouseMove(V2.fromMC(mainPos, crossPos), wd.size, mousePos)
-      );
-      return out;
-    });
-    return out;
-  }
-  
-  bool tbOnMouseDown(int crossPos, MouseButton button, V2 mousePos) {
-    var out = false;
-    _forEachWithMainPos((wd, mainPos) {
-      out = (
-        wd.cross.onMouseDown(V2.fromMC(mainPos, crossPos), wd.size, button, mousePos) ||
-        wd.dt   .onMouseDown(V2.fromMC(mainPos, crossPos), wd.size, button, mousePos)
+        cb(wd, wd.cross, mainPos) ||
+        cb(wd, wd.dt   , mainPos)
       );
       return out;
     });
     return out;
   }
 
+  bool tbOnMouseMove(int crossPos, V2 mousePos) {
+    return _tbForEach((wd, icon, mainPos) => icon.onMouseMove(V2.fromMC(mainPos, crossPos), wd.size, mousePos));
+  }
+  
+  bool tbOnMouseDown(int crossPos, MouseButton button, V2 mousePos) {
+    return _tbForEach((wd, icon, mainPos) => icon.onMouseDown(V2.fromMC(mainPos, crossPos), wd.size, button, mousePos));
+  }
+
   bool tbOnMouseUp(int crossPos, MouseButton button, V2 mousePos) {
-    var out = false;
-    _forEachWithMainPos((wd, mainPos) {
-      out = (
-        wd.cross.onMouseUp(V2.fromMC(mainPos, crossPos), wd.size, button, mousePos) ||
-        wd.dt   .onMouseUp(V2.fromMC(mainPos, crossPos), wd.size, button, mousePos)
-      );
-      return out;
-    });
-    return out;
+    return _tbForEach((wd, icon, mainPos) => icon.onMouseUp(V2.fromMC(mainPos, crossPos), wd.size, button, mousePos));
   }
 
   /// quits if [cb] returns `true`
@@ -784,32 +772,28 @@ class BeansWindowManager extends XYPointer with CatchAll {
       }
     });
   }
-  
-  bool _tbMouseMove(V2 mousePos) {
+
+  bool _tbForEach(bool Function(Collection, int) cb) {
     var out = false;
+
     _forEachCollectionWithCrossPos((collection, crossPos) {
-      out = collection.tbOnMouseMove(crossPos, mousePos);
+      out = cb(collection, crossPos);
       return out;
     });
+
     return out;
+  }
+  
+  bool _tbMouseMove(V2 mousePos) {
+    return _tbForEach((collection, crossPos) => collection.tbOnMouseMove(crossPos, mousePos));
   }
 
   bool _tbMouseDown(V2 mousePos, MouseButton button) {
-    var out = false;
-    _forEachCollectionWithCrossPos((collection, crossPos) {
-      out = collection.tbOnMouseDown(crossPos, button, mousePos);
-      return out;
-    });
-    return out;
+    return _tbForEach((collection, crossPos) => collection.tbOnMouseDown(crossPos, button, mousePos));
   }
 
   bool _tbMouseUp(V2 mousePos, MouseButton button) {
-    var out = false;
-    _forEachCollectionWithCrossPos((collection, crossPos) {
-      out = collection.tbOnMouseUp(crossPos, button, mousePos);
-      return out;
-    });
-    return out;
+    return _tbForEach((collection, crossPos) => collection.tbOnMouseUp(crossPos, button, mousePos));
   }
 
   void _event(Event event) {
