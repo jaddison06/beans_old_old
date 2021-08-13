@@ -6,6 +6,7 @@ class Image {
     void* InitImage(RenderWindow* rw, char* fname)
 
     @Invalidates()
+    @Show(Destroy)
     void DestroyImage()
 
     @Getter(width)

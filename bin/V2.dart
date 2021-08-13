@@ -24,6 +24,7 @@ class V2 {
     x = BeansWindowManager.isColumns ? cross : main,
     y = BeansWindowManager.isColumns ? main : cross;
 
+
   V2 operator + (Object other) {
     switch (other.runtimeType) {
       case int: return V2(

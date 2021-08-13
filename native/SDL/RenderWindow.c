@@ -19,11 +19,14 @@ void RWGetSize(RenderWindow* rw, int* width, int* height) {
     // the window doesn't go fullscreen immediately - it freezes briefly at
     // a resolution of 320x200. This doesn't block. So, if you call SDL_GetWindowSize
     // right after program start, it'll return weird values. The solution is to 
-    //! always use SDL_GetCurrentDisplayMode to get window size.
+    //! always use SDL_GetDesktopDisplayMode to get window size.
 
     //SDL_GetWindowSize(rw->win, width, height);
     SDL_DisplayMode DM;
-    SDL_GetCurrentDisplayMode(0, &DM);
+    // there's a subtle difference between GetCurrentDisplayMode and GetDesktopDisplayMode. according to the docs, i want
+    // GetCurrentDisplayMode, but fsr it seems like GetDesktopDisplayMode works better
+    // SDL_GetCurrentDisplayMode(0, &DM);
+    SDL_GetDesktopDisplayMode(0, &DM);
     *width = DM.w;
     *height = DM.h;
     //printf("(%ix%i)\n", *width, *height);

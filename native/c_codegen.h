@@ -31,11 +31,19 @@ typedef enum {
     SDLEventType_MouseDown = 5,
     SDLEventType_MouseUp = 6,
     SDLEventType_MouseScroll = 7,
-    SDLEventType_FingerDown = 8,
-    SDLEventType_FingerUp = 9,
-    SDLEventType_FingerDrag = 10,
-    SDLEventType_NotImplemented = 11,
+    SDLEventType_WindowEvent = 8,
+    SDLEventType_Unknown = 9,
 } SDLEventType;
+
+typedef enum {
+    WindowEventType_Minimized = 0,
+    WindowEventType_Restored = 1,
+    WindowEventType_FocusGained = 2,
+    WindowEventType_FocusLost = 3,
+    WindowEventType_SizeChanged = 4,
+    WindowEventType_Moved = 5,
+    WindowEventType_Unknown = 6,
+} WindowEventType;
 
 typedef enum {
     MouseButton_Left = 0,

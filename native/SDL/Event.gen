@@ -9,10 +9,8 @@ enum SDLEventType {
     MouseDown
     MouseUp
     MouseScroll
-    FingerDown
-    FingerUp
-    FingerDrag
-    NotImplemented
+    WindowEvent
+    Unknown
 }
 
 class Event {
@@ -30,8 +28,21 @@ class Event {
 
     void GetMouseMoveData(int* x, int* y)
     MouseButton GetMousePressReleaseData(int* x, int* y)
-    KeyCode GetKeyPressReleaseData() // could be a getter but it feels more like a method
 
+    // these could be getters but they kinda feel like they should be methods
+    KeyCode GetKeyPressReleaseData()
+    WindowEventType GetWindowEventData()
+
+}
+
+enum WindowEventType {
+    Minimized
+    Restored
+    FocusGained
+    FocusLost
+    SizeChanged
+    Moved
+    Unknown
 }
 
 enum MouseButton {

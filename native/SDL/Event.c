@@ -16,19 +16,30 @@ int Poll(SDL_Event* event) {
 
 SDLEventType GetEventType(SDL_Event* event) {
     switch (event->type) {
-        case SDL_QUIT: return SDLEventType_Quit;
-        case SDL_APP_LOWMEMORY: return SDLEventType_LowMemory;
-        case SDL_KEYDOWN: return SDLEventType_KeyDown;
-        case SDL_KEYUP: return SDLEventType_KeyUp;
-        case SDL_MOUSEMOTION: return SDLEventType_MouseMove;
+        case SDL_QUIT:            return SDLEventType_Quit;
+        case SDL_APP_LOWMEMORY:   return SDLEventType_LowMemory;
+        case SDL_KEYDOWN:         return SDLEventType_KeyDown;
+        case SDL_KEYUP:           return SDLEventType_KeyUp;
+        case SDL_MOUSEMOTION:     return SDLEventType_MouseMove;
         case SDL_MOUSEBUTTONDOWN: return SDLEventType_MouseDown;
-        case SDL_MOUSEBUTTONUP: return SDLEventType_MouseUp;
-        case SDL_MOUSEWHEEL: return SDLEventType_MouseScroll;
-        case SDL_FINGERDOWN: return SDLEventType_FingerDown;
-        case SDL_FINGERUP: return SDLEventType_FingerUp;
-        case SDL_FINGERMOTION: return SDLEventType_FingerDrag;
+        case SDL_MOUSEBUTTONUP:   return SDLEventType_MouseUp;
+        case SDL_MOUSEWHEEL:      return SDLEventType_MouseScroll;
+        case SDL_WINDOWEVENT:     return SDLEventType_WindowEvent;
         
-        default: return SDLEventType_NotImplemented;
+        default:                  return SDLEventType_Unknown;
+    }
+}
+
+WindowEventType GetWindowEventData(SDL_Event* event) {
+    switch (event->window.event) {
+        case SDL_WINDOWEVENT_MINIMIZED:    return WindowEventType_Minimized;
+        case SDL_WINDOWEVENT_RESTORED:     return WindowEventType_Restored;
+        case SDL_WINDOWEVENT_FOCUS_GAINED: return WindowEventType_FocusGained;
+        case SDL_WINDOWEVENT_FOCUS_LOST:   return WindowEventType_FocusLost;
+        case SDL_WINDOWEVENT_SIZE_CHANGED: return WindowEventType_SizeChanged;
+        case SDL_WINDOWEVENT_MOVED:        return WindowEventType_Moved;
+
+        default:                           return WindowEventType_Unknown;
     }
 }
 
@@ -89,61 +100,61 @@ KeyCode GetKeyPressReleaseData(SDL_Event* event) {
         case SDLK_9: return KeyCode_Nine;
         case SDLK_0: return KeyCode_Zero;
 
-        case SDLK_EXCLAIM: return KeyCode_Exclamation;
+        case SDLK_EXCLAIM:  return KeyCode_Exclamation;
         case SDLK_QUESTION: return KeyCode_Question;
         case SDLK_QUOTEDBL: return KeyCode_DoubleQuote;
-        case SDLK_QUOTE: return KeyCode_SingleQuote;
+        case SDLK_QUOTE:    return KeyCode_SingleQuote;
         // todo: pound?
-        case SDLK_DOLLAR: return KeyCode_Dollar;
-        case SDLK_PERCENT: return KeyCode_Percent;
-        case SDLK_CARET: return KeyCode_Caret;
-        case SDLK_AMPERSAND: return KeyCode_Ampersand;
-        case SDLK_ASTERISK: return KeyCode_Asterisk;
-        case SDLK_MINUS: return KeyCode_Hyphen;
+        case SDLK_DOLLAR:     return KeyCode_Dollar;
+        case SDLK_PERCENT:    return KeyCode_Percent;
+        case SDLK_CARET:      return KeyCode_Caret;
+        case SDLK_AMPERSAND:  return KeyCode_Ampersand;
+        case SDLK_ASTERISK:   return KeyCode_Asterisk;
+        case SDLK_MINUS:      return KeyCode_Hyphen;
         case SDLK_UNDERSCORE: return KeyCode_Underscore;
-        case SDLK_EQUALS: return KeyCode_Equals;
-        case SDLK_PLUS: return KeyCode_Plus;
+        case SDLK_EQUALS:     return KeyCode_Equals;
+        case SDLK_PLUS:       return KeyCode_Plus;
         // todo: pipe
         case SDLK_SEMICOLON: return KeyCode_Semicolon;
-        case SDLK_COLON: return KeyCode_Colon;
-        case SDLK_AT: return KeyCode_At;
+        case SDLK_COLON:     return KeyCode_Colon;
+        case SDLK_AT:        return KeyCode_At;
         // todo: tilde
-        case SDLK_HASH: return KeyCode_Hash;
+        case SDLK_HASH:      return KeyCode_Hash;
         case SDLK_BACKQUOTE: return KeyCode_Backtick;
 
-        case SDLK_LEFTPAREN: return KeyCode_NormalBracketL;
-        case SDLK_RIGHTPAREN: return KeyCode_NormalBracketR;
-        case SDLK_LEFTBRACKET: return KeyCode_SquareBracketL;
+        case SDLK_LEFTPAREN:    return KeyCode_NormalBracketL;
+        case SDLK_RIGHTPAREN:   return KeyCode_NormalBracketR;
+        case SDLK_LEFTBRACKET:  return KeyCode_SquareBracketL;
         case SDLK_RIGHTBRACKET: return KeyCode_SquareBracketR;
         // todo: braces
-        case SDLK_LESS: return KeyCode_SmallerThan;
-        case SDLK_GREATER: return KeyCode_GreaterThan;
+        case SDLK_LESS:         return KeyCode_SmallerThan;
+        case SDLK_GREATER:      return KeyCode_GreaterThan;
 
-        case SDLK_RETURN: return KeyCode_Return;
-        case SDLK_ESCAPE: return KeyCode_Escape;
+        case SDLK_RETURN:    return KeyCode_Return;
+        case SDLK_ESCAPE:    return KeyCode_Escape;
         case SDLK_BACKSPACE: return KeyCode_Backspace;
-        case SDLK_DELETE: return KeyCode_Delete;
-        case SDLK_TAB: return KeyCode_Tab;
-        case SDLK_SPACE: return KeyCode_Space;
+        case SDLK_DELETE:    return KeyCode_Delete;
+        case SDLK_TAB:       return KeyCode_Tab;
+        case SDLK_SPACE:     return KeyCode_Space;
 
-        case SDLK_INSERT: return KeyCode_Insert;
-        case SDLK_HOME: return KeyCode_Home;
-        case SDLK_END: return KeyCode_End;
-        case SDLK_PAGEUP: return KeyCode_PageUp;
+        case SDLK_INSERT:   return KeyCode_Insert;
+        case SDLK_HOME:     return KeyCode_Home;
+        case SDLK_END:      return KeyCode_End;
+        case SDLK_PAGEUP:   return KeyCode_PageUp;
         case SDLK_PAGEDOWN: return KeyCode_PageDown;
 
         case SDLK_RIGHT: return KeyCode_ArrowRight;
-        case SDLK_LEFT: return KeyCode_ArrowLeft;
-        case SDLK_DOWN: return KeyCode_ArrowDown;
-        case SDLK_UP: return KeyCode_ArrowUp;
+        case SDLK_LEFT:  return KeyCode_ArrowLeft;
+        case SDLK_DOWN:  return KeyCode_ArrowDown;
+        case SDLK_UP:    return KeyCode_ArrowUp;
 
-        case SDLK_KP_DIVIDE: return KeyCode_NumpadDivide;
+        case SDLK_KP_DIVIDE:   return KeyCode_NumpadDivide;
         case SDLK_KP_MULTIPLY: return KeyCode_NumpadMultiply;
-        case SDLK_KP_MINUS: return KeyCode_NumpadSubtract;
-        case SDLK_KP_PLUS: return KeyCode_NumpadAdd;
-        case SDLK_KP_EQUALS: return KeyCode_NumpadEquals;
-        case SDLK_KP_ENTER: return KeyCode_NumpadEnter;
-        case SDLK_KP_PERIOD: return KeyCode_NumpadDecimalPoint;
+        case SDLK_KP_MINUS:    return KeyCode_NumpadSubtract;
+        case SDLK_KP_PLUS:     return KeyCode_NumpadAdd;
+        case SDLK_KP_EQUALS:   return KeyCode_NumpadEquals;
+        case SDLK_KP_ENTER:    return KeyCode_NumpadEnter;
+        case SDLK_KP_PERIOD:   return KeyCode_NumpadDecimalPoint;
         
         case SDLK_KP_1: return KeyCode_NumpadOne;
         case SDLK_KP_2: return KeyCode_NumpadTwo;
@@ -156,25 +167,25 @@ KeyCode GetKeyPressReleaseData(SDL_Event* event) {
         case SDLK_KP_9: return KeyCode_NumpadNine;
         case SDLK_KP_0: return KeyCode_NumpadZero;
 
-        case SDLK_F1: return KeyCode_Function_F1;
-        case SDLK_F2: return KeyCode_Function_F2;
-        case SDLK_F3: return KeyCode_Function_F3;
-        case SDLK_F4: return KeyCode_Function_F4;
-        case SDLK_F5: return KeyCode_Function_F5;
-        case SDLK_F6: return KeyCode_Function_F6;
-        case SDLK_F7: return KeyCode_Function_F7;
-        case SDLK_F8: return KeyCode_Function_F8;
-        case SDLK_F9: return KeyCode_Function_F9;
+        case SDLK_F1:  return KeyCode_Function_F1;
+        case SDLK_F2:  return KeyCode_Function_F2;
+        case SDLK_F3:  return KeyCode_Function_F3;
+        case SDLK_F4:  return KeyCode_Function_F4;
+        case SDLK_F5:  return KeyCode_Function_F5;
+        case SDLK_F6:  return KeyCode_Function_F6;
+        case SDLK_F7:  return KeyCode_Function_F7;
+        case SDLK_F8:  return KeyCode_Function_F8;
+        case SDLK_F9:  return KeyCode_Function_F9;
         case SDLK_F10: return KeyCode_Function_F10;
         case SDLK_F11: return KeyCode_Function_F11;
         case SDLK_F12: return KeyCode_Function_F12;
 
-        case SDLK_LCTRL: return KeyCode_LControl;
-        case SDLK_RCTRL: return KeyCode_RControl;
+        case SDLK_LCTRL:  return KeyCode_LControl;
+        case SDLK_RCTRL:  return KeyCode_RControl;
         case SDLK_LSHIFT: return KeyCode_LShift;
         case SDLK_RSHIFT: return KeyCode_RShift;
-        case SDLK_LALT: return KeyCode_LAlt;
-        case SDLK_RALT: return KeyCode_RAlt;
+        case SDLK_LALT:   return KeyCode_LAlt;
+        case SDLK_RALT:   return KeyCode_RAlt;
 
         case SDLK_AUDIONEXT: return KeyCode_AudioNext;
         case SDLK_AUDIOPREV: return KeyCode_AudioPrev;

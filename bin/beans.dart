@@ -16,10 +16,11 @@ class Beans with CatchAll {
     if (_rw.errorCode != SDLInitCode.Success) {
       _panic(SDLInitCodeToString(_rw.errorCode));
     }
-    _wm = BeansWindowManager(_rw);
 
     FontCache.defaultFamily = 'res/DroidSansMono/DroidSansMono.ttf';
     FontCache.defaultPt = 24;
+    
+    _wm = BeansWindowManager(_rw);
   }
 
   /// Something has gone seriously wrong and the WindowManager has died, so print a panic message to the terminal.

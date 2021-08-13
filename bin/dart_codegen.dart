@@ -411,8 +411,8 @@ class Image {
     }
 
     @mustCallSuper
-    void DestroyImage() {
-        _validatePointer('DestroyImage');
+    void Destroy() {
+        _validatePointer('Destroy');
         final out = _DestroyImage!(structPointer);
 
         // this method invalidates the pointer, probably by freeing memory
@@ -446,10 +446,8 @@ enum SDLEventType {
     MouseDown,
     MouseUp,
     MouseScroll,
-    FingerDown,
-    FingerUp,
-    FingerDrag,
-    NotImplemented,
+    WindowEvent,
+    Unknown,
 }
 
 SDLEventType SDLEventTypeFromInt(int val) => SDLEventType.values[val];
@@ -465,10 +463,33 @@ String SDLEventTypeToString(SDLEventType val) {
         case SDLEventType.MouseDown: { return 'MouseDown'; }
         case SDLEventType.MouseUp: { return 'MouseUp'; }
         case SDLEventType.MouseScroll: { return 'MouseScroll'; }
-        case SDLEventType.FingerDown: { return 'FingerDown'; }
-        case SDLEventType.FingerUp: { return 'FingerUp'; }
-        case SDLEventType.FingerDrag: { return 'FingerDrag'; }
-        case SDLEventType.NotImplemented: { return 'NotImplemented'; }
+        case SDLEventType.WindowEvent: { return 'WindowEvent'; }
+        case SDLEventType.Unknown: { return 'Unknown'; }
+    }
+}
+
+enum WindowEventType {
+    Minimized,
+    Restored,
+    FocusGained,
+    FocusLost,
+    SizeChanged,
+    Moved,
+    Unknown,
+}
+
+WindowEventType WindowEventTypeFromInt(int val) => WindowEventType.values[val];
+int WindowEventTypeToInt(WindowEventType val) => WindowEventType.values.indexOf(val);
+
+String WindowEventTypeToString(WindowEventType val) {
+    switch (val) {
+        case WindowEventType.Minimized: { return 'Minimized'; }
+        case WindowEventType.Restored: { return 'Restored'; }
+        case WindowEventType.FocusGained: { return 'FocusGained'; }
+        case WindowEventType.FocusLost: { return 'FocusLost'; }
+        case WindowEventType.SizeChanged: { return 'SizeChanged'; }
+        case WindowEventType.Moved: { return 'Moved'; }
+        case WindowEventType.Unknown: { return 'Unknown'; }
     }
 }
 
@@ -778,6 +799,10 @@ typedef _libEvent_class_Event_method_GetMousePressReleaseData_sig = int Function
 typedef _libEvent_class_Event_method_GetKeyPressReleaseData_native_sig = Int32 Function(Pointer<Void>);
 typedef _libEvent_class_Event_method_GetKeyPressReleaseData_sig = int Function(Pointer<Void>);
 
+// WindowEventType GetWindowEventData(void* struct_ptr)
+typedef _libEvent_class_Event_method_GetWindowEventData_native_sig = Int32 Function(Pointer<Void>);
+typedef _libEvent_class_Event_method_GetWindowEventData_sig = int Function(Pointer<Void>);
+
 // ----------CLASS IMPLEMENTATIONS----------
 
 class Event {
@@ -796,6 +821,7 @@ class Event {
     static _libEvent_class_Event_method_GetMouseMoveData_sig? _GetMouseMoveData;
     static _libEvent_class_Event_method_GetMousePressReleaseData_sig? _GetMousePressReleaseData;
     static _libEvent_class_Event_method_GetKeyPressReleaseData_sig? _GetKeyPressReleaseData;
+    static _libEvent_class_Event_method_GetWindowEventData_sig? _GetWindowEventData;
 
     void _initRefs() {
         if (
@@ -805,7 +831,8 @@ class Event {
             _Poll == null ||
             _GetMouseMoveData == null ||
             _GetMousePressReleaseData == null ||
-            _GetKeyPressReleaseData == null
+            _GetKeyPressReleaseData == null ||
+            _GetWindowEventData == null
         ) {
             final lib = DynamicLibrary.open('build/native/SDL/libEvent.so');
 
@@ -816,6 +843,7 @@ class Event {
             _GetMouseMoveData = lib.lookupFunction<_libEvent_class_Event_method_GetMouseMoveData_native_sig, _libEvent_class_Event_method_GetMouseMoveData_sig>('GetMouseMoveData');
             _GetMousePressReleaseData = lib.lookupFunction<_libEvent_class_Event_method_GetMousePressReleaseData_native_sig, _libEvent_class_Event_method_GetMousePressReleaseData_sig>('GetMousePressReleaseData');
             _GetKeyPressReleaseData = lib.lookupFunction<_libEvent_class_Event_method_GetKeyPressReleaseData_native_sig, _libEvent_class_Event_method_GetKeyPressReleaseData_sig>('GetKeyPressReleaseData');
+            _GetWindowEventData = lib.lookupFunction<_libEvent_class_Event_method_GetWindowEventData_native_sig, _libEvent_class_Event_method_GetWindowEventData_sig>('GetWindowEventData');
         }
     }
 
@@ -863,6 +891,11 @@ class Event {
     KeyCode GetKeyPressReleaseData() {
         _validatePointer('GetKeyPressReleaseData');
         return KeyCodeFromInt(_GetKeyPressReleaseData!(structPointer));
+    }
+
+    WindowEventType GetWindowEventData() {
+        _validatePointer('GetWindowEventData');
+        return WindowEventTypeFromInt(_GetWindowEventData!(structPointer));
     }
 
 }

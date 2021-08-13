@@ -26,7 +26,6 @@ abstract class TitleBarIcon {
 
     isPressed = hitTest(windowPos, windowSize, mousePos);
 
-    print(isPressed);
     if (isPressed) mouseDownCallback?.call();
 
     return isPressed;
