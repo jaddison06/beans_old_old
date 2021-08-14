@@ -189,7 +189,7 @@ class RenderWindow {
         final out = _DestroyRenderWindow!(structPointer);
 
         // this method invalidates the pointer, probably by freeing memory
-        structPointer = Pointer.fromAddress(0);
+        structPointer = nullptr;
 
         return out;
     }
@@ -347,7 +347,7 @@ class BeansFont {
         final out = _DestroyFont!(structPointer);
 
         // this method invalidates the pointer, probably by freeing memory
-        structPointer = Pointer.fromAddress(0);
+        structPointer = nullptr;
 
         return out;
     }
@@ -449,7 +449,7 @@ class Image {
         final out = _DestroyImage!(structPointer);
 
         // this method invalidates the pointer, probably by freeing memory
-        structPointer = Pointer.fromAddress(0);
+        structPointer = nullptr;
 
         return out;
     }
@@ -896,7 +896,7 @@ class Event {
         final out = _FreeEvent!(structPointer);
 
         // this method invalidates the pointer, probably by freeing memory
-        structPointer = Pointer.fromAddress(0);
+        structPointer = nullptr;
 
         return out;
     }

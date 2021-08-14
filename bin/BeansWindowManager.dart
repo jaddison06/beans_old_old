@@ -136,10 +136,8 @@ class Collection extends XYPointer {
   }
 
   int? mainEdge(int crossPos, V2 mousePos) {
-    if (!isColumns) crossPos -= _conf.windowTitleBar.height;
     return _forEachWithMainPos((wd, mainPos) {
       if (wd == windows.last) return null;
-      if (isColumns) mainPos -= _conf.windowTitleBar.height;
       final mainPos2 = mainPos + wd.size.main;
       final crossPos2 = crossPos + wd.size.cross;
       if (
@@ -999,6 +997,7 @@ class BeansWindowManager extends XYPointer {
       windowStartPos: windowPos,
       windowCurrentPos: windowPos
     );
+    _setCursor(dragCursor());
     // hacky but it works to remove the window and possibly the collection from the layout
     //
     // however it means we've only got one reference to the WindowData now - in _drag. so don't lose it !!!
@@ -1102,11 +1101,7 @@ class BeansWindowManager extends XYPointer {
           // we're not actually looking for a drag, we just want to change the cursor, so we'll reset _drag
           // to null.
           getDrag(eventPos);
-
-          //* this has to come before the tbMouseMove - if we move from a drag zone onto an icon then
-          // the icon will cause tbMouseMove to return, so the cursor won't be reset.
           _setCursor(dragCursor());
-          
           _drag = null;
 
           if (_tbMouseMove(eventPos)) return;
@@ -1153,9 +1148,9 @@ class BeansWindowManager extends XYPointer {
           if (_drag!.dragType == WMDragType.Move) {
             
           }
-
           _drag = null;
           _setCursor(dragCursor());
+          _drag = null;
         } else {
           if (_tbMouseUp(eventPos, button)) return;
 

@@ -348,7 +348,7 @@ def classes(file: ParsedGenFile) -> str:
             if has_annotation(method.annotations, "Invalidates"):
                 out += f"        final out = {return_string}"
                 out += "\n        // this method invalidates the pointer, probably by freeing memory\n"
-                out += "        structPointer = Pointer.fromAddress(0);\n\n"
+                out += "        structPointer = nullptr;\n\n"
                 out += "        return out;\n"
             else:
                 out += f"        return {return_string}"
