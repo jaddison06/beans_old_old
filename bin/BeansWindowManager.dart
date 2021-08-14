@@ -101,13 +101,12 @@ class Collection extends XYPointer {
 
   void setCrossSize(int newCrossSize) {
     for (var wd in windows) {
-      if (isColumns) {
-        wd.size.x = newCrossSize;
-      } else {
-        wd.size.y = newCrossSize;
-      }
+      wd.size.cross = newCrossSize;
     }
   }
+
+  // assume all windows have the same cross size, which they *should*
+  int get crossSize => windows.last.size.cross;
 
   bool? _tbForEach(bool Function(WindowData, TitleBarIcon, int) cb) {
     return _forEachWithMainPos((wd, mainPos) => (
@@ -322,7 +321,7 @@ class BeansWindowManager extends XYPointer {
       final res = cb(collection, crossPos);
       if (res != null) return res;
 
-      crossPos += crossSize(collection.windows.last);
+      crossPos += collection.crossSize;
       if (!isColumns) crossPos += _conf.windowTitleBar.height;
     }
   }
@@ -380,9 +379,9 @@ class BeansWindowManager extends XYPointer {
   }
 
   /// get minimum main axis size of the window
-  int minMainSize (BeansWindow win) => isColumns ? win.minSize.y : win.minSize.x;
+  int minMainSize (BeansWindow win) => win.minSize.main;
   /// get minimum cross axis size of the window
-  int minCrossSize(BeansWindow win) => isColumns ? win.minSize.x : win.minSize.y;
+  int minCrossSize(BeansWindow win) => win.minSize.cross;
 
   /// get minimum main axis size of the window, including the title bar
   int minMainSizeWithTitlebar(BeansWindow win) {
@@ -398,21 +397,16 @@ class BeansWindowManager extends XYPointer {
     return out;
   }
 
-  /// get current main axis size of the window
-  int mainSize (WindowData wd) => isColumns ? wd.size.y : wd.size.x;
-  /// get current cross axis size of the window
-  int crossSize(WindowData wd) => isColumns ? wd.size.x : wd.size.y;
-
   /// get current main axis size of the window, including the title bar
   int mainSizeWithTitlebar(WindowData wd) {
-    var out = mainSize(wd);
+    var out = wd.size.main;
     if (isColumns) out += _conf.windowTitleBar.height;
     return out;
   }
 
   /// get current cross axis size of the window, including the title bar
   int crossSizeWithTitlebar(WindowData wd) {
-    var out = crossSize(wd);
+    var out = wd.size.cross;
     if (!isColumns) out += _conf.windowTitleBar.height;
     return out;
   }
@@ -455,7 +449,7 @@ class BeansWindowManager extends XYPointer {
   ///! Normally you should use [totalCrossAxisSize] as that returns the cross axis size of the [BeansRenderWindow].
   /// Only use currentCrossAxisSize if you expect collections to be incorrectly sized.
   int currentCrossAxisSize() {
-    return _windows.map((collection) => crossSize(collection.windows.last)).sum();
+    return _windows.map((collection) => collection.crossSize).sum();
   }
 
   /// get the current total main axis size of the [BeansRenderWindow]
@@ -474,20 +468,7 @@ class BeansWindowManager extends XYPointer {
 
   /// set the main axis size of a window
   void setMainSize(WindowData wd, int newSize) {
-    if (isColumns) {
-      wd.size.y = newSize;
-    } else {
-      wd.size.x = newSize;
-    }
-  }
-
-  /// set the cross axis size of a window
-  void setCrossSize(WindowData wd, int newSize) {
-    if (isColumns) {
-      wd.size.x = newSize;
-    } else {
-      wd.size.y = newSize;
-    }
+    wd.size.main = newSize;
   }
 
   Cursor get mainCursor  => isColumns ? Cursor.SizeVertical : Cursor.SizeHorizontal;
@@ -544,7 +525,7 @@ class BeansWindowManager extends XYPointer {
     // total cross axis size of the whole layout
     final totalCrossSize = totalCrossAxisSize();
     // previous crossSize of the collection
-    final oldCrossSize = collection.windows.isEmpty ? 0 : crossSize(collection.windows.last);
+    final oldCrossSize = collection.windows.isEmpty ? 0 : collection.crossSize;
     // ratio to reduce/increase the size of all other collections by.
     //! this must be a double
     final ratio = (totalCrossSize - (newCrossSize - oldCrossSize)) / totalCrossSize;
@@ -557,7 +538,7 @@ class BeansWindowManager extends XYPointer {
         // resize the collection to either its current size * the ratio, or its mininum size, whichever is bigger.
         modifyCollection.setCrossSize(
           max(
-            (crossSize(modifyCollection.windows.last) * ratio).toInt(),
+            (modifyCollection.crossSize * ratio).toInt(),
             minPossibleCrossSize(modifyCollection)
           )
         );
@@ -569,7 +550,7 @@ class BeansWindowManager extends XYPointer {
   /// If the window's [minCrossSize] is smaller than the collection's [crossSize], resize the collection to accommodate the
   /// window. Assumes that doing so won't overflow the layout.
   void resizeIfNeeded(Collection collection, BeansWindow win) {
-    if (minCrossSize(win) > crossSize(collection.windows.last)) {
+    if (minCrossSize(win) > collection.crossSize) {
       resizeCollections(collection, minCrossSize(win));
     }
   }
@@ -581,12 +562,12 @@ class BeansWindowManager extends XYPointer {
   /// - If both windows need a resize, the winner is the one with the smallest resize, or inconclusive if they are equal.
   /// - If neither needs a resize, the result is inconclusive.
   Collection? bestState1Or2Candidate(BeansWindow win, Collection a, Collection b) {
-    final aNeedsResize = minCrossSize(win) > crossSize(a.windows.last);
-    final bNeedsResize = minCrossSize(win) > crossSize(b.windows.last);
+    final aNeedsResize = minCrossSize(win) > a.crossSize;
+    final bNeedsResize = minCrossSize(win) > b.crossSize;
     if (aNeedsResize && bNeedsResize) {
       // smallest resize wins
-      final aResize = crossSize(a.windows.last) - minCrossSize(win);
-      final bResize = crossSize(b.windows.last) - minCrossSize(win);
+      final aResize = a.crossSize - minCrossSize(win);
+      final bResize = b.crossSize - minCrossSize(win);
       if (aResize > bResize) {
         return a;
       } else if (bResize > aResize) {
@@ -614,8 +595,8 @@ class BeansWindowManager extends XYPointer {
       return resizeBest;
     }
 
-    final aFreeSpace = mainSize(a.windows.last) - minMainSize(a.windows.last.window);
-    final bFreeSpace = mainSize(b.windows.last) - minMainSize(b.windows.last.window);
+    final aFreeSpace = a.windows.last.size.main - minMainSize(a.windows.last.window);
+    final bFreeSpace = b.windows.last.size.main - minMainSize(b.windows.last.window);
 
     if (aFreeSpace > bFreeSpace) {
       return a;
@@ -646,11 +627,12 @@ class BeansWindowManager extends XYPointer {
   /// Add a window to a collection using State 1 rules. Assumes that there is enough space, and that this won't cause the
   /// layout to overflow.
   void addState1(BeansWindow win, Collection collection) {
+    final lastWindow = collection.windows.last;
     // Gap between the two windows if they were both at their minMainSize
-    var gap = mainSize(collection.windows.last) - (minMainSize(collection.windows.last.window) + minMainSizeWithTitlebar(win));
+    var gap = lastWindow.size.main - (minMainSize(lastWindow.window) + minMainSizeWithTitlebar(win));
 
     /// resize the current final window
-    setMainSize(collection.windows.last, minMainSize(collection.windows.last.window) + (gap ~/ 2));
+    setMainSize(lastWindow, minMainSize(lastWindow.window) + (gap ~/ 2));
     resizeIfNeeded(collection, win);
     addWindowToCollection(
       win,
@@ -658,7 +640,7 @@ class BeansWindowManager extends XYPointer {
       /*mainPos: offsetEnd(collection.last),
       crossPos: alignedStart(collection.last),*/
       mainSize_: minMainSize(win) + (gap ~/ 2), //? does this need to account for the titlebar?
-      crossSize_: crossSize(collection.windows.last)
+      crossSize_: collection.crossSize
     );
   }
 
@@ -671,7 +653,7 @@ class BeansWindowManager extends XYPointer {
     for (var modifyWindow in collection.windows) {
       setMainSize(modifyWindow,
         max(
-          (mainSize(modifyWindow) * ratio).toInt(),
+          (modifyWindow.size.main * ratio).toInt(),
           minMainSize(modifyWindow.window)
         )
       );
@@ -681,7 +663,7 @@ class BeansWindowManager extends XYPointer {
       win,
       collection,
       mainSize_: minMainSize(win),
-      crossSize_: crossSize(collection.windows.last)
+      crossSize_: collection.crossSize
     );
   }
 
@@ -727,7 +709,7 @@ class BeansWindowManager extends XYPointer {
     final currentMainSize = currentMainAxisSize(collection);
     final ratio = totalMainSize / currentMainSize;
     for (var wd in collection.windows) {
-      setMainSize(wd, (mainSize(wd) * ratio).toInt());
+      setMainSize(wd, (wd.size.main * ratio).toInt());
     }
   }
 
@@ -740,7 +722,7 @@ class BeansWindowManager extends XYPointer {
     final currentCrossSize = currentCrossAxisSize();
     final ratio = totalCrossSize / currentCrossSize;
     for (var collection in _windows) {
-      final thisCrossSize = crossSize(collection.windows.last);
+      final thisCrossSize = collection.crossSize;
       collection.setCrossSize((thisCrossSize * ratio).toInt());
     }
   }
@@ -790,7 +772,7 @@ class BeansWindowManager extends XYPointer {
       if (
         // it will be able to fit in at the end by resizing ONLY the final window
         (
-          mainSize(candidate.windows.last) >= (
+          candidate.windows.last.size.main >= (
             minMainSize(candidate.windows.last.window) +
             minMainSizeWithTitlebar(win)
           )
@@ -798,7 +780,7 @@ class BeansWindowManager extends XYPointer {
         (
           // EITHER it doesn't need a resize
           (
-            minCrossSize(win) <= crossSize(candidate.windows.last)
+            minCrossSize(win) <= candidate.crossSize
           ) ||
           // OR it does need a resize, but the resize wouldn't cause a layout overflow.
           (
@@ -836,7 +818,7 @@ class BeansWindowManager extends XYPointer {
         // Same as state 1
         (
           (
-            minCrossSize(win) <= crossSize(candidate.windows.last)
+            minCrossSize(win) <= candidate.crossSize
           ) ||
           (
             !wouldOverflow(candidate, minCrossSize(win))
@@ -1035,8 +1017,8 @@ class BeansWindowManager extends XYPointer {
           dragType: WMDragType.CrossAxisResize,
           dragStartPos: mousePos,
           resizeIdx: idx,
-          initialSize1: crossSize(_windows[idx].windows.last),
-          initialSize2: crossSize(collection.windows.last)
+          initialSize1: _windows[idx].crossSize,
+          initialSize2: collection.crossSize
         );
         // any non-null value
         return 0;

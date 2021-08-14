@@ -30,6 +30,9 @@ class V2 {
   int get main  => _isColumns ? y : x;
   int get cross => _isColumns ? x : y;
 
+  set main (int val) => _isColumns ? y = val : x = val;
+  set cross(int val) => _isColumns ? x = val : y = val;
+
 
   V2 operator + (Object other) {
     switch (other.runtimeType) {
