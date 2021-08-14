@@ -6,7 +6,7 @@ import 'CatchAll.dart';
 /// from Dart code. It takes care of the event loop & makes sure the window
 /// is painted and cleared properly. It is **not** responsible for cleaning up
 /// the [BeansRenderWindow]`
-class BeansRenderer with CatchAll {
+class BeansRenderer {
   final BeansRenderWindow rw;
   final Event _event;
 

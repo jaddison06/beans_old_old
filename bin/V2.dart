@@ -46,6 +46,15 @@ class V2 {
     }
   }
 
+  V2 operator - (Object other) {
+    switch (other.runtimeType) {
+      case int: return this + -(other as int);
+      case V2: return this + V2(-(other as V2).x, -other.y);
+
+      default: throw Exception('Cannot subtract an object of type ${other.runtimeType} from a V2.');
+    }
+  }
+
   @override
   String toString() => 'V2($x,$y)';
 

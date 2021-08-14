@@ -7,7 +7,7 @@ import 'CatchAll.dart';
 
 /// Beans is responsible for initialization, error handling & cleanup at
 /// the highest level. It creates the [BeansRenderWindow] and the [BeansWindowManager].
-class Beans with CatchAll {
+class Beans {
   late final BeansRenderWindow _rw;
   late final BeansWindowManager _wm;
 

@@ -47,4 +47,6 @@ class BeansRenderWindow extends RenderWindow {
   void DrawImage(Image image, V2 pos, [double scale = 1]) {
     cDrawImage(image, pos.x, pos.y, scale);
   }
+
+
 }

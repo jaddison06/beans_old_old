@@ -68,10 +68,11 @@ abstract class TitleBarIcon {
   void renderIcon(BeansRenderWindow rw, V2 windowPos, V2 windowSize);
 
   void render(BeansRenderWindow rw, V2 windowPos, V2 windowSize) {
-    //* order is important because if isPressed is true then isHovered will also be true !!
-    if (isPressed) {
+    if (isPressed && isHovered) {
+      // if we're pressed and the mouse is currently over us
       drawIconBox(rw, windowPos, windowSize, true);
     } else if (isHovered) {
+      // if we're being hovered over
       drawIconBox(rw, windowPos, windowSize, false);
     }
 
