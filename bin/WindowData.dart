@@ -27,7 +27,6 @@ class WindowData {
     required this.onClose,
     required this.onDragStart
   }) {
-    print(size);
     cross = TitleBarCross(() => onClose(this));
     dt = TitleBarDragTarget((windowPos, mousePos) => onDragStart(this, windowPos, mousePos));
   }

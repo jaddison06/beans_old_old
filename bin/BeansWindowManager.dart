@@ -224,8 +224,12 @@ class BeansWindowManager extends XYPointer {
         colour: Colours.blue,
       ),
       ColourWindow(
-        minSize: V2(100, 900),
+        minSize: V2(1800, 100),
         colour: Colours.cyan,
+      ),
+      ColourWindow(
+        minSize: V2(200, 100),
+        colour: Colours.magenta
       )
     ]);
   }
@@ -284,7 +288,7 @@ class BeansWindowManager extends XYPointer {
   /// minPossibleMainSize plus title bars
   int minPossibleMainSizeWithTitleBars(Collection collection) {
     var out = minPossibleMainSize(collection);
-    if (isColumns) out += _conf.windowTitleBar.height;
+    if (isColumns) out += (_conf.windowTitleBar.height * collection.windows.length);
     return out;
   }
 
@@ -303,7 +307,7 @@ class BeansWindowManager extends XYPointer {
     return collection.windows.map(mainSizeWithTitlebar).sum();
   }
 
-  /// get the current total cross axis size of all collections.
+  /// get the current total cross axis size of all collections, NOT INCLUDING TITLE BARS
   /// 
   ///! Normally you should use [totalCrossAxisSize] as that returns the cross axis size of the [BeansRenderWindow].
   /// Only use currentCrossAxisSize if you expect collections to be incorrectly sized.
@@ -390,16 +394,16 @@ class BeansWindowManager extends XYPointer {
     return out;
   }
 
+  // todo: there's a bug in this - see addState2. If a collection gets resized to its min cross size INSTEAD of the cross size
+  // calculated from the ratio, the others won't update & they'll be oversized.
+  // 
   /// Resize all collections so that [collection] has a crossSize of [newCrossSize].
   /// 
   /// Similarly to [addState2], all other collections are scaled so that either they're at the same size relative to each
   /// other, or they're at their minimum size. Assumes that doing so won't overflow the layout.
   void resizeCollections(Collection collection, int newCrossSize) {
-    // total cross axis size of the whole layout
-    final totalCrossSize = _windows.map((collection) => collection.crossSize).sum();
-    //final totalCrossSize = totalCrossAxisSize();
-    // previous crossSize of the collection
-    final oldCrossSize = collection.windows.isEmpty ? 0 : collection.crossSize;
+    final totalCrossSize = currentCrossAxisSize();
+    final oldCrossSize = collection.crossSize;
     // ratio to reduce/increase the size of all other collections by.
     //! this must be a double
     final ratio = (totalCrossSize - (newCrossSize - oldCrossSize)) / totalCrossSize;
@@ -409,13 +413,14 @@ class BeansWindowManager extends XYPointer {
         // resize the selected collection to newCrossSize
         modifyCollection.setCrossSize(newCrossSize);
       } else {
+        final crossSize = max(
+          (modifyCollection.crossSize * ratio).toInt(),
+          minPossibleCrossSize(modifyCollection)
+        // todo: why do we have to subtract the title bar height here??
+        // it seems to work but i don't know WHY
+        ) - (isColumns ? 0 : /*_conf.windowTitleBar.height*/0);
         // resize the collection to either its current size * the ratio, or its mininum size, whichever is bigger.
-        modifyCollection.setCrossSize(
-          max(
-            (modifyCollection.crossSize * ratio).toInt(),
-            minPossibleCrossSize(modifyCollection)
-          )
-        );
+        modifyCollection.setCrossSize(crossSize);
       }
     }
 
@@ -521,16 +526,29 @@ class BeansWindowManager extends XYPointer {
   /// Add a window to a collection using State 2 rules. Assumes that there is enough space, and that this won't cause the
   /// layout to overflow.
   void addState2(BeansWindow win, Collection collection) {
-    final currentMainSize = totalMainAxisSize();
+    final currentMainSize = currentMainAxisSize(collection);
     //! must be a double
-    final ratio = (currentMainSize - minMainSizeWithTitlebar(win)) / currentMainSize;
-    for (var modifyWindow in collection.windows) {
-      setMainSize(modifyWindow,
-        max(
-          (modifyWindow.size.main * ratio).toInt(),
-          minMainSize(modifyWindow.window)
-        )
+    var ratio = (currentMainSize - minMainSizeWithTitlebar(win)) / currentMainSize;
+    final windows = collection.windows.toList();
+    for (var checkWin in collection.windows) {
+      final diff = (
+        minMainSize(checkWin.window) -
+        (checkWin.size.main * ratio).toInt()
       );
+      if (diff > 0) {
+        //* sum of main sizes of the OTHER windows needs to get smaller by diff
+        windows.remove(checkWin);
+        final totalMainSize = windows.map((wd) => wd.size.main).sum();
+        ratio = ((totalMainSize * ratio) - diff) / totalMainSize;
+        windows.add(checkWin);
+      }
+    }
+    for (var modifyWindow in collection.windows) {
+      final mainSize = max(
+        (modifyWindow.size.main * ratio).toInt(),
+        minMainSize(modifyWindow.window)
+      );
+      setMainSize(modifyWindow, mainSize);
     }
     resizeIfNeeded(collection, win);
     addWindowToCollection(
@@ -543,7 +561,6 @@ class BeansWindowManager extends XYPointer {
 
   /// Create a new collection and add the window to it using State 3 rules. Assumes that doing so won't overflow the layout.
   void addState3(BeansWindow win) {
-    print('WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW');
     final totalMainSize = totalMainAxisSize();
     final totalCrossSize = totalCrossAxisSize();
     
@@ -555,7 +572,7 @@ class BeansWindowManager extends XYPointer {
     final gap = totalCrossSize - (currentTotalMinCrossSize + minCrossSizeWithTitlebar(win));
     var crossSize = previousCollection == null ?
       totalCrossSize - (isColumns ? 0 : _conf.windowTitleBar.height):
-      minCrossSize(win) + (gap ~/ 2);
+      minCrossSize(win) + (gap ~/ 2) - (isColumns ? 0 : _conf.windowTitleBar.height);
 
     var winMainSize = totalMainSize;
     if (isColumns) winMainSize -= _conf.windowTitleBar.height;
@@ -571,8 +588,6 @@ class BeansWindowManager extends XYPointer {
       mainSize: winMainSize,
       crossSize: crossSize
     );
-    print(_windows.last.crossSize);
-    print(getPos(_windows.last.windows.last));
   }
 
   /// Display an error message telling the user that there is not enough space to create the window.
@@ -597,7 +612,7 @@ class BeansWindowManager extends XYPointer {
   /// 
   ///! Doesn't respect minimum sizes - this is intended for scaling **up**.
   void resizeAllCollections() {
-    final totalCrossSize = totalCrossAxisSize();
+    final totalCrossSize = totalCrossAxisSize() - (isColumns ? 0 : ((_windowCount - 2) * _conf.windowTitleBar.height));
     final currentCrossSize = currentCrossAxisSize();
     final ratio = totalCrossSize / currentCrossSize;
     for (var collection in _windows) {
@@ -679,7 +694,7 @@ class BeansWindowManager extends XYPointer {
 
     // did we find a suitable candidate for State 1?
     if (selection != null) {
-      // print('state 1!!');
+      print('state 1!!');
       addState1(win, selection);
       return;
     }
@@ -716,7 +731,7 @@ class BeansWindowManager extends XYPointer {
 
     // did we find a suitable candidate for State 2?
     if (selection != null) {
-      // print('state 2!!');
+      print('state 2!!');
       addState2(win, selection);
       return;
     }
@@ -729,12 +744,12 @@ class BeansWindowManager extends XYPointer {
         minCrossSizeWithTitlebar(win)
       )
     ) {
-      // print('state 3!!');
+      print('state 3!!');
       addState3(win);
       return;
     }
     
-    // print('state 4!!');
+    print('state 4!!');
     state4(win.title);
 
   }
@@ -963,7 +978,6 @@ class BeansWindowManager extends XYPointer {
       // time so we don't want to call it unnecessarily.
       if (collection.isOnCrossEdge(crossPos, mousePos)) {
         if (collection == _windows.last) {
-          print('ooga booga chooga looga');
           return null;
         }
         final idx = _windows.indexOf(collection);
@@ -1003,14 +1017,7 @@ class BeansWindowManager extends XYPointer {
       return;
     }
     if (_forEachCollectionWithCrossPos((collection, crossPos) {
-      print(currentCrossAxisSize());
-      print(totalCrossAxisSize());
-      print(crossPos);
-      print(crossPos + collection.crossSize);
-      print(mousePos);
-      print('');
       if (collection.isOnCrossEdge(crossPos, mousePos)) {
-        print('i love dicks');
         _drag!.moveType = WMMoveType.ToNewCollection;
         _drag!.moveResultCross = collection;
         return 0;
@@ -1046,7 +1053,7 @@ class BeansWindowManager extends XYPointer {
   }
 
   bool _moveIsAllowed() {
-    return false;
+    return true;
   }
 
   void _event(Event event) {
