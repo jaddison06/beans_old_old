@@ -50,7 +50,7 @@ abstract class TitleBarIcon {
   V2 get iconSize => V2.square(conf.windowTitleBar.iconSize);
   V2 iconPos(V2 windowPos, V2 windowSize) {
     final tbX2 = windowPos.x + windowSize.x;
-    final tbY = windowPos.y - conf.windowTitleBar.height;
+    final tbY = windowPos.y;
 
     final padding = (conf.windowTitleBar.height - conf.windowTitleBar.iconSize) ~/ 2;
     final iconY = tbY + padding;

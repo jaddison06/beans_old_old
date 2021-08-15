@@ -26,6 +26,10 @@ class V2 {
     x = _isColumns ? cross : main,
     y = _isColumns ? main : cross;
   
+
+  /// Create a copy of this V2
+  V2 clone() => V2(x, y);
+  
   
   int get main  => _isColumns ? y : x;
   int get cross => _isColumns ? x : y;
@@ -55,6 +59,24 @@ class V2 {
       case V2: return this + V2(-(other as V2).x, -other.y);
 
       default: throw Exception('Cannot subtract an object of type ${other.runtimeType} from a V2.');
+    }
+  }
+
+  V2 operator * (Object other) {
+    switch (other.runtimeType) {
+      case int: return V2(x * (other as int), y * other);
+      case V2: return V2(x * (other as V2).x, y * other.y);
+
+      default: throw Exception('Cannot multiply a V2 by an object of type ${other.runtimeType}.');
+    }
+  }
+
+  V2 operator ~/ (Object other) {
+    switch (other.runtimeType) {
+      case int: return V2(x ~/ (other as int), y ~/ other);
+      case V2: return V2(x ~/ (other as V2).x, y ~/ other.y);
+
+      default: throw Exception('Cannot divide a V2 by an object of type ${other.runtimeType}.');
     }
   }
 

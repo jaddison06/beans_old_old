@@ -1,5 +1,4 @@
 import 'BeansWindow.dart';
-import 'beans.dart';
 import 'dart_codegen.dart';
 import 'BeansRenderer.dart';
 import 'dart:ffi';
@@ -11,181 +10,15 @@ import 'CatchAll.dart';
 import 'Colour.dart';
 import 'Config.dart';
 import 'V2.dart';
-import 'TitleBarIcon.dart';
 import 'TextButton.dart';
 import 'BeansAssert.dart';
+import 'WindowData.dart';
+import 'Collection.dart';
 
 extension on Iterable<int> {
   int sum() {
     return isEmpty ? 0 : reduce((value, element) => value + element);
   }
-}
-
-/// WindowData represents metadata about a [BeansWindow], needed by the [BeansWindowManager].
-class WindowData {
-  V2 size;
-  bool isFocused;
-  bool isFloating;
-  BeansWindow window;
-  final _conf = Config.instance;
-
-  final void Function(WindowData, V2, V2) onDragStart;
-  final void Function(WindowData) onClose;
-  late final TitleBarIcon cross;
-  late final TitleBarIcon dt;
-
-  WindowData({
-    required this.size,
-    required this.isFocused,
-    required this.isFloating,
-    required this.window,
-    required this.onClose,
-    required this.onDragStart
-  }) {
-    cross = TitleBarCross(() => onClose(this));
-    dt = TitleBarDragTarget((windowPos, mousePos) => onDragStart(this, windowPos, mousePos));
-  }
-
-  /// Tests if the event at [hit] occured inside this window.
-  /// [hitTest] is *inclusive* on the left/top and *exclusive* on the right/bottom.
-  bool hitTest(V2 windowPos, V2 hit) {
-    return windowPos.hitTest(size, hit);
-  }
-
-  bool hitTestWithTitleBar(V2 windowPos, V2 hit) {
-    final tbHeight = _conf.windowTitleBar.height;
-    return (windowPos - V2(0, tbHeight)).hitTest(size, hit + V2(0, tbHeight));
-  }
-
-  /// Tests if the event at [hit] occured inside this window's title bar.
-  bool isInTitleBar(V2 windowPos, V2 hit) {
-    return _tbPos(windowPos).hitTest(_tbSize(windowPos), hit);
-  }
-
-  V2 _tbPos(V2 windowPos) => V2(windowPos.x, windowPos.y - _conf.windowTitleBar.height);
-  V2 _tbSize(V2 windowPos) => V2(size.x, _conf.windowTitleBar.height);
-
-  /// Render [window] using [x], [y], [width] and [height].
-  void render(BeansRenderWindow rw, V2 windowPos, bool showDecorations) {
-    window.render(rw, windowPos, size);
-    if (showDecorations) {
-      _renderWindowDecorations(rw, windowPos);
-    }
-  }
-
-  void _renderWindowDecorations(BeansRenderWindow rw, V2 windowPos) {
-    final tbPos = _tbPos(windowPos);
-    final tbSize = _tbSize(windowPos);
-
-    // bg col
-    rw.FillRect(tbPos, tbSize, window.titleBarBGCol);
-    // bar
-    rw.FillRect(tbPos, tbSize, _conf.windowTitleBar.col);
-
-    cross.render(rw, windowPos, size);
-    dt.render(rw, windowPos, size);
-  }
-
-  int x2(int x) => x + size.x;
-  int y2(int y) => y + size.y;
-}
-
-/// A row or column of windows
-class Collection extends XYPointer {
-
-  final _conf = Config.instance;
-
-  final windows = <WindowData>[];
-
-  bool get isColumns => BeansWindowManager.isColumns;
-
-  void setCrossSize(int newCrossSize) {
-    for (var wd in windows) {
-      wd.size.cross = newCrossSize;
-    }
-  }
-
-  // assume all windows have the same cross size, which they *should*
-  int get crossSize => windows.last.size.cross;
-
-  bool? _tbForEach(bool Function(WindowData, TitleBarIcon, int) cb) {
-    return _forEachWithMainPos((wd, mainPos) => (
-        (cb(wd, wd.cross, mainPos) ||
-        cb(wd, wd.dt   , mainPos)) ?
-        //! because of what goes on a *long* way up the call chain, this CANNOT return false. If you want falsy, it needs to be null.
-        true : null
-    ));
-  }
-
-  bool? tbOnMouseMove(int crossPos, V2 mousePos) {
-    return _tbForEach((wd, icon, mainPos) => icon.onMouseMove(V2.fromMC(mainPos, crossPos), wd.size, mousePos));
-  }
-  
-  bool? tbOnMouseDown(int crossPos, MouseButton button, V2 mousePos) {
-    return _tbForEach((wd, icon, mainPos) => icon.onMouseDown(V2.fromMC(mainPos, crossPos), wd.size, button, mousePos));
-  }
-
-  bool? tbOnMouseUp(int crossPos, MouseButton button, V2 mousePos) {
-    return _tbForEach((wd, icon, mainPos) => icon.onMouseUp(V2.fromMC(mainPos, crossPos), wd.size, button, mousePos));
-  }
-
-
-  bool isOnCrossEdge(int crossPos, V2 mousePos) {
-    if (!isColumns) crossPos -= _conf.windowTitleBar.height;
-    return (mousePos.cross - crossPos).abs() <= BeansWindowManager.dragAcceptBoundary;
-  }
-
-  int? mainEdge(int crossPos, V2 mousePos) {
-    return _forEachWithMainPos((wd, mainPos) {
-      if (wd == windows.last) return null;
-      final mainPos2 = mainPos + wd.size.main;
-      final crossPos2 = crossPos + wd.size.cross;
-      if (
-        mousePos.cross >= crossPos &&
-        mousePos.cross < crossPos2 &&
-        (mousePos.main - mainPos2).abs() <= BeansWindowManager.dragAcceptBoundary
-      ) {
-        return windows.indexOf(wd);
-      }
-    });
-  }
-
-  /// breaks if [cb] returns a non-null value
-  T? _forEachWithMainPos<T>(T? Function(WindowData, int) cb) {
-    var mainPos = isColumns ? _conf.windowTitleBar.height : 0;
-    for (var wd in windows) {
-      final res = cb(wd, mainPos);
-      if (res != null) return res;
-
-      mainPos += isColumns ? wd.size.y : wd.size.x;
-      if (isColumns) mainPos += _conf.windowTitleBar.height;
-    }
-  }
-
-  void render(BeansRenderWindow rw, int crossPos) {
-    _forEachWithMainPos((wd, mainPos) {
-      final pos = V2.fromMC(mainPos, crossPos);
-      BeansWindowManager.renderOrError(rw, wd, pos, true); 
-    });
-  }
-
-  WindowData? hitTest(V2 hit, int crossPos, [bool withTitlebar = false]) {
-    WindowData? out;
-    _forEachWithMainPos((wd, mainPos) {
-      final pos = V2.fromMC(mainPos, crossPos);
-      bool res;
-      if (withTitlebar) {
-        res = wd.hitTestWithTitleBar(pos, hit);
-      } else {
-        res = wd.hitTest(pos, hit);
-      }
-
-      if (res) out = wd;
-      return res;
-    });
-    return out;
-  }
-
 }
 
 /// How new windows, snapping, & layout should align
@@ -201,6 +34,12 @@ enum WMDragType {
   Move
 }
 
+enum WMMoveType {
+  InsideCollection,
+  ToNewCollection,
+  Swap
+}
+
 /// utility that holds info about a WM drag operation
 class DragInfo {
   DragInfo({
@@ -210,31 +49,38 @@ class DragInfo {
     this.resizeIdx,
     this.initialSize1,
     this.initialSize2,
+    this.moveType,
     this.movingWindow,
     this.windowStartPos,
-    this.windowCurrentPos
+    this.dragCurrentPos,
+    this.moveResultCross,
+    this.moveResultMain
   }) {
     switch (dragType) {
       case WMDragType.MainAxisResize: {
-        BeansAssert(resizeCollection != null, 'DragInfo initialized as MainAxisResize, but resizeCollection is null.');
-        BeansAssert(resizeIdx        != null, 'DragInfo initialized as MainAxisResize, but resizeIdx is null.');
-        BeansAssert(initialSize1     != null, 'DragInfo initialized as MainAxisResize, but initialSize1 is null.');
-        BeansAssert(initialSize2     != null, 'DragInfo initialized as MainAxisResize, but initialSize2 is null.');
+        _cannotNull(resizeCollection, 'resizeCollection');
+        _cannotNull(resizeIdx, 'resizeIdx');
+        _cannotNull(initialSize1, 'initialSize1');
+        _cannotNull(initialSize2, 'initialSize2');
         break;
       }
       case WMDragType.CrossAxisResize: {
-        BeansAssert(resizeIdx        != null, 'DragInfo initialized as CrossAxisResize, but resizeIdx is null.');
-        BeansAssert(initialSize1     != null, 'DragInfo initialized as CrossAxisResize, but initialSize1 is null.');
-        BeansAssert(initialSize2     != null, 'DragInfo initialized as CrossAxisResize, but initialSize2 is null.');
+        _cannotNull(resizeIdx, 'resizeIdx');
+        _cannotNull(initialSize1, 'initialSize1');
+        _cannotNull(initialSize2, 'initialSize2');
         break;
       }
       case WMDragType.Move: {
-        BeansAssert(movingWindow != null,     'DragInfo initialized as Move, but movingWindow is null.');
-        BeansAssert(windowStartPos != null,   'DragInfo initialized as Move, but windowStartPos is null.');
-        BeansAssert(windowCurrentPos != null, 'DragInfo initialized as Move, but windowCurrentPos is null.');
+        _cannotNull(movingWindow, 'movingWindow');
+        _cannotNull(windowStartPos, 'windowStartPos');
+        _cannotNull(dragCurrentPos, 'dragCurrentPos');
+        //! the caller MUST initialize moveType *immediately*!!!!!
+        break;
       }
     }
   }
+
+  void _cannotNull(Object? value, String name) => BeansAssert(value != null, 'DragInfo initialized as $dragType, but $name is null.');
 
   final WMDragType dragType;
 
@@ -246,20 +92,32 @@ class DragInfo {
   // for a MainAxisResize, the idx in _resizeCollection.windows of the FIRST window being resized.
   // for a CrossAxisResize, the idx of the FIRST collection being resized.
   final int? resizeIdx;
-
   // for a MainAxisResize, the initial main axis sizes of the two windows.
+
   // for a CrossAxisResize, the initial cross axis sizes of the two collections.
   final int? initialSize1;
   final int? initialSize2;
+
+  WMMoveType? moveType;
 
   // for a Move, the window that is being dragged.
   final WindowData? movingWindow;
   // for a Move, the initial position of the window that is being dragged
   final V2? windowStartPos;
-  // for a Move, the current position of the window that is being dragged
+  // for a Move, the current position of the mouse
   // (this mutates bc we can't render the window dynamically without knowing its position, and we can't figure
   // out the position from the render function as it doesn't have the mouse event.)
-  V2? windowCurrentPos;
+  V2? dragCurrentPos;
+  
+  // for a MoveInsideCollection, the collection containing the move.
+  // for a MoveToNewCollection, the collection directly before the position of the new one, or null if we're inserting at 0.
+  // for a MoveSwap, the collection containing the window that *isn't* being dragged.
+  Collection? moveResultCross;
+  // for a MoveInsideCollection, the window directly before the position of the new one, or null if we're inserting at 0.
+  // for a MoveToNewCollection, null.
+  // for a MoveSwap, the window that *isn't* being dragged.
+  WindowData? moveResultMain;
+
 }
 
 /// BeansWindowManager is responsible for:
@@ -277,7 +135,7 @@ class BeansWindowManager extends XYPointer {
   String? panicMsg;
 
   late final TextButton _quitBtn;
-  late final Image _forgor;
+  final _media = <String, Image>{};
 
   // how close do you have to be to the line in order to call it a drag
   static final int dragAcceptBoundary = 8;
@@ -313,14 +171,15 @@ class BeansWindowManager extends XYPointer {
     }
   }
 
+  ///! crossPos is INCLUDING THE TITLEBAR
   T? _forEachCollectionWithCrossPos<T>(T? Function(Collection, int) cb) {
-    var crossPos = isColumns ? 0 : _conf.windowTitleBar.height;
+    var crossPos = 0;
     for (var collection in _windows) {
       final res = cb(collection, crossPos);
       if (res != null) return res;
-
-      crossPos += collection.crossSize;
+      
       if (!isColumns) crossPos += _conf.windowTitleBar.height;
+      crossPos += collection.crossSize;
     }
   }
 
@@ -343,7 +202,9 @@ class BeansWindowManager extends XYPointer {
       onClick: _ren.quit,
       buttonCol: Colours.red
     );
-    _forgor = Image(_rw, 'res/forgor.jpg');
+
+    _media['forgor'] = Image(_rw, 'res/forgor.jpg');
+    _media['beans'] = Image(_rw, 'res/beans.jpg');
 
     _testWindows.addAll([
       ColourWindow(
@@ -360,7 +221,7 @@ class BeansWindowManager extends XYPointer {
       ),
       ColourWindow(
         minSize: V2(1500, 200),
-        colour: Colours.black,
+        colour: Colours.blue,
       ),
       ColourWindow(
         minSize: V2(100, 900),
@@ -483,10 +344,10 @@ class BeansWindowManager extends XYPointer {
 
   /// Calculates x, y, width, height and initializes the [WindowData]. Assumes that resizing of other windows
   /// has already been done, and that it is **not** a floating window.
-  void addWindowToCollection(BeansWindow win, Collection collection, {required int mainSize_, required int crossSize_, bool focus = true}) {
+  void addWindowToCollection(BeansWindow win, Collection collection, {required int mainSize, required int crossSize, bool focus = true}) {
     collection.windows.add(
       WindowData(
-        size: V2.fromMC(mainSize_, crossSize_),
+        size: V2.fromMC(mainSize, crossSize),
         window: win,
         isFloating: false,
         isFocused: focus,
@@ -515,13 +376,28 @@ class BeansWindowManager extends XYPointer {
     return sum > totalCrossSize;
   }
 
+  ///! output's cross pos is INCLUDING THE TITLEBAR
+  V2 getPos(WindowData wd) {
+    final out = _forEachCollectionWithCrossPos((collection, crossPos) {
+      final mainPos = collection.getMainPos(wd);
+      if (mainPos != null) {
+        return V2.fromMC(mainPos, crossPos);
+      }
+    });
+    if (out == null) {
+      throw Exception('Called getMainPos on window ${wd.window.title}, but it was not found.');
+    }
+    return out;
+  }
+
   /// Resize all collections so that [collection] has a crossSize of [newCrossSize].
   /// 
   /// Similarly to [addState2], all other collections are scaled so that either they're at the same size relative to each
   /// other, or they're at their minimum size. Assumes that doing so won't overflow the layout.
   void resizeCollections(Collection collection, int newCrossSize) {
     // total cross axis size of the whole layout
-    final totalCrossSize = totalCrossAxisSize();
+    final totalCrossSize = _windows.map((collection) => collection.crossSize).sum();
+    //final totalCrossSize = totalCrossAxisSize();
     // previous crossSize of the collection
     final oldCrossSize = collection.windows.isEmpty ? 0 : collection.crossSize;
     // ratio to reduce/increase the size of all other collections by.
@@ -637,8 +513,8 @@ class BeansWindowManager extends XYPointer {
       collection,
       /*mainPos: offsetEnd(collection.last),
       crossPos: alignedStart(collection.last),*/
-      mainSize_: minMainSize(win) + (gap ~/ 2), //? does this need to account for the titlebar?
-      crossSize_: collection.crossSize
+      mainSize: minMainSize(win) + (gap ~/ 2), //? does this need to account for the titlebar?
+      crossSize: collection.crossSize
     );
   }
 
@@ -660,38 +536,43 @@ class BeansWindowManager extends XYPointer {
     addWindowToCollection(
       win,
       collection,
-      mainSize_: minMainSize(win),
-      crossSize_: collection.crossSize
+      mainSize: minMainSize(win),
+      crossSize: collection.crossSize
     );
   }
 
   /// Create a new collection and add the window to it using State 3 rules. Assumes that doing so won't overflow the layout.
   void addState3(BeansWindow win) {
+    print('WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW');
     final totalMainSize = totalMainAxisSize();
     final totalCrossSize = totalCrossAxisSize();
     
     final currentTotalMinCrossSize = _windows.map((collection) => minPossibleCrossSizeWithTitleBars(collection)).sum();
 
-    // gap between all the current collections at their minPossibleCrossSize and this window at its minCrossSize
-    final gap = totalCrossSize - (currentTotalMinCrossSize + minCrossSizeWithTitlebar(win));
-    var crossSize_ = minCrossSize(win) + (gap ~/ 2); //? does this need to account for the title bar?
-
     final previousCollection = _windows.isEmpty ? null : _windows.last;
 
-    _windows.add(Collection());
+    // gap between all the current collections at their minPossibleCrossSize and this window at its minCrossSize
+    final gap = totalCrossSize - (currentTotalMinCrossSize + minCrossSizeWithTitlebar(win));
+    var crossSize = previousCollection == null ?
+      totalCrossSize - (isColumns ? 0 : _conf.windowTitleBar.height):
+      minCrossSize(win) + (gap ~/ 2);
 
     var winMainSize = totalMainSize;
     if (isColumns) winMainSize -= _conf.windowTitleBar.height;
 
-    resizeCollections(_windows.last, crossSize_);
+    _windows.add(Collection());
+
+    resizeCollections(_windows.last, crossSize);
     addWindowToCollection(
       win,
       _windows.last,
       /*mainPos: 0,
       crossPos: previousCollection == null ? 0 : alignedEnd(previousCollection.last),*/
-      mainSize_: winMainSize,
-      crossSize_: previousCollection == null ? totalCrossSize : crossSize_
+      mainSize: winMainSize,
+      crossSize: crossSize
     );
+    print(_windows.last.crossSize);
+    print(getPos(_windows.last.windows.last));
   }
 
   /// Display an error message telling the user that there is not enough space to create the window.
@@ -869,7 +750,10 @@ class BeansWindowManager extends XYPointer {
     _ren.destroy();
 
     _quitBtn.destroy();
-    _forgor.Destroy();
+
+    for (var image in _media.values) {
+      image.Destroy();
+    }
 
     for (var collection in _windows) {
       collection.destroy();
@@ -891,8 +775,8 @@ class BeansWindowManager extends XYPointer {
   }
 
   void _drawPanicScreen(BeansRenderWindow rw) {
-    rw.DrawImage(_forgor, V2.square(0));
-    rw.DrawText(panicMsg!, V2(0, _forgor.height), Colours.red);
+    rw.DrawImage(_media['forgor']!, V2.square(0));
+    rw.DrawText(panicMsg!, V2(0, _media['forgor']!.height), Colours.red);
     _quitBtn.render(rw);
   }
 
@@ -918,22 +802,93 @@ class BeansWindowManager extends XYPointer {
       }
       return;
     }
+
+    final moveTakingPlace = _drag != null && _drag!.dragType == WMDragType.Move;
+    final movingWindow = _drag?.movingWindow;
+
+    // draw beans UNDERNEATH the other windows
+    if (moveTakingPlace) {
+      final beans = _media['beans']!;
+
+      final scale = max(
+        (movingWindow!.size.y + _conf.windowTitleBar.height) / beans.height,
+        movingWindow.size.x / beans.width
+      );
+
+      _rw.DrawImage(_media['beans']!, getPos(movingWindow), scale);
+    }
+
+    // Now draw nomal windows
     _forEachCollectionWithCrossPos((collection, crossPos) {
-      collection.render(rw, crossPos);
+      collection.render(rw, crossPos, movingWindow);
     });
 
-    if (_drag != null && _drag!.dragType == WMDragType.Move) {
-      renderOrError(rw, _drag!.movingWindow!, _drag!.windowCurrentPos!, false);
+    // Now draw drag extras *on top*
+    if (moveTakingPlace) {
+      final windowCurrentPos = _drag!.windowStartPos! + (_drag!.dragCurrentPos! - _drag!.dragStartPos);
+
+      renderOrError(rw, movingWindow!, windowCurrentPos, false);
+
+      // Start pos and size of the rect (we draw a rect even when it's not WMMoveType.Swap so we can get the thickness)
+      V2? start;
+      V2? size;
+
+      final thickness = 6;
+
+      switch (_drag!.moveType!) {
+        case WMMoveType.InsideCollection: {
+          size = V2.fromMC(thickness, _drag!.moveResultCross!.crossSize)
+            ..y += _conf.windowTitleBar.height;
+          if (_drag!.moveResultMain != null) {
+            start = getPos(_drag!.moveResultMain!)
+              ..main += _drag!.moveResultMain!.size.main;
+          } else {
+            start =_forEachCollectionWithCrossPos((collection, crossPos) {
+              if (collection == _drag!.moveResultCross!) {
+                return V2.fromMC(0, crossPos);
+              }
+            });
+          }
+          start!.main -= size.main ~/ 2;
+          break;
+        }
+        case WMMoveType.ToNewCollection: {
+          size = V2.fromMC(totalMainAxisSize(), thickness);
+          if (_drag!.moveResultCross != null) {
+            _forEachCollectionWithCrossPos((collection, crossPos) {
+              if (collection == _drag!.moveResultCross!) {
+                start = V2.fromMC(0, crossPos + collection.crossSize);
+                if (!isColumns) start!.cross += _conf.windowTitleBar.height;
+                return 0;
+              }
+            });
+          } else {
+            start = V2.origin();
+          }
+          start!.cross -= size.cross ~/ 2;
+          break;
+        }
+        case WMMoveType.Swap: {
+          size = _drag!.moveResultMain!.size.clone()
+            ..y += _conf.windowTitleBar.height;
+          start = getPos(_drag!.moveResultMain!);
+          break;
+        }
+      }
+      final a = 160;
+      final col = _moveIsAllowed() ? (Colours.green..a = a) : (Colours.red..a = a);
+
+      _rw.FillRect(start!, size, col);
     }
     
     //rw.DrawText('deez nuts', V2.square(30), Colours.black);
   }
 
-  void _closeWindow(WindowData win) {
+  void _closeWindow(WindowData wd) {
     for (var i=0; i<_windows.length; i++) {
       final collection = _windows[i];
-      if (collection.windows.contains(win)) {
-        collection.windows.remove(win);
+      if (collection.windows.contains(wd)) {
+        collection.windows.remove(wd);
         resizeAll(collection);
         if (collection.windows.isEmpty) {
           _windows.removeAt(i);
@@ -995,34 +950,35 @@ class BeansWindowManager extends XYPointer {
       dragStartPos: mousePos,
       movingWindow: wd,
       windowStartPos: windowPos,
-      windowCurrentPos: windowPos
+      dragCurrentPos: mousePos,
     );
+    _setMoveInfo(mousePos);
     _setCursor(dragCursor());
-    // hacky but it works to remove the window and possibly the collection from the layout
-    //
-    // however it means we've only got one reference to the WindowData now - in _drag. so don't lose it !!!
-    _closeWindow(wd);
+    //_closeWindow(wd);
   }
 
   bool getDrag(V2 mousePos) {
     _forEachCollectionWithCrossPos((collection, crossPos) {
       //* ordered this way for two reasons - cross edge is more important so that should take priority, and main edge could take a long
       // time so we don't want to call it unnecessarily.
-      if (collection.isOnCrossEdge(crossPos, mousePos) && collection != _windows.first) {
-        // The collection will tell us if the drag is at its *leading* cross axis edge, so subtract one
-        // to get the previous collection.
-        final idx = _windows.indexOf(collection) - 1;
+      if (collection.isOnCrossEdge(crossPos, mousePos)) {
+        if (collection == _windows.last) {
+          print('ooga booga chooga looga');
+          return null;
+        }
+        final idx = _windows.indexOf(collection);
         _drag = DragInfo(
           dragType: WMDragType.CrossAxisResize,
           dragStartPos: mousePos,
           resizeIdx: idx,
-          initialSize1: _windows[idx].crossSize,
-          initialSize2: collection.crossSize
+          initialSize1: collection.crossSize,
+          initialSize2: _windows[idx + 1].crossSize
         );
         // any non-null value
         return 0;
       }
       final mainResizeIdx = collection.mainEdge(crossPos, mousePos);
+      if (mainResizeIdx == collection.windows.length - 1) return 0;
       if (mainResizeIdx != null) {
         _drag = DragInfo(
           dragType: WMDragType.MainAxisResize,
@@ -1036,6 +992,61 @@ class BeansWindowManager extends XYPointer {
       }
     });
     return _drag != null;
+  }
+
+  void _setMoveInfo(V2 mousePos) {
+    //* check for ToNewCollection
+    if (mousePos.cross <= dragAcceptBoundary) {
+      // add new collection at pos 0
+      _drag!.moveType = WMMoveType.ToNewCollection;
+      _drag!.moveResultCross = null;
+      return;
+    }
+    if (_forEachCollectionWithCrossPos((collection, crossPos) {
+      print(currentCrossAxisSize());
+      print(totalCrossAxisSize());
+      print(crossPos);
+      print(crossPos + collection.crossSize);
+      print(mousePos);
+      print('');
+      if (collection.isOnCrossEdge(crossPos, mousePos)) {
+        print('i love dicks');
+        _drag!.moveType = WMMoveType.ToNewCollection;
+        _drag!.moveResultCross = collection;
+        return 0;
+      }
+      //* check for InsideCollection
+      if (
+        mousePos.main <= dragAcceptBoundary &&
+        mousePos.cross >= crossPos &&
+        mousePos.cross < crossPos + collection.crossSize
+      ) {
+        _drag!.moveType = WMMoveType.InsideCollection;
+        _drag!.moveResultCross = collection;
+        _drag!.moveResultMain = null;
+        return 0;
+      }
+      final mainEdge = collection.mainEdge(crossPos, mousePos);
+      if (mainEdge != null) {
+        _drag!.moveType = WMMoveType.InsideCollection;
+        _drag!.moveResultCross = collection;
+        _drag!.moveResultMain = collection.windows[mainEdge];
+        return 0;
+      }
+      //* check for swap
+      final swap = collection.hitTest(mousePos, crossPos, true);
+      if (swap != null) {
+        _drag!.moveType = WMMoveType.Swap;
+        _drag!.moveResultCross = collection;
+        _drag!.moveResultMain = swap;
+        return 0;
+      }
+    }) != null) return;
+    print("move info wasn't set!");
+  }
+
+  bool _moveIsAllowed() {
+    return false;
   }
 
   void _event(Event event) {
@@ -1092,8 +1103,8 @@ class BeansWindowManager extends XYPointer {
               break;
             }
             case WMDragType.Move: {
-              final diff = eventPos - _drag!.dragStartPos;
-              _drag!.windowCurrentPos = _drag!.windowStartPos! + diff;
+              _drag!.dragCurrentPos = eventPos;
+              _setMoveInfo(eventPos);
               break;
             }
           }
@@ -1146,11 +1157,29 @@ class BeansWindowManager extends XYPointer {
 
         if (_drag != null) {
           if (_drag!.dragType == WMDragType.Move) {
-            
+            // if the move's not permitted we don't have to do anything special,
+            // just set _drag to null & the original window will re-appear as if by magic
+            // (it never really left)
+            if (_moveIsAllowed()) {
+              switch (_drag!.moveType!) {
+                case WMMoveType.InsideCollection: {
+                  break;
+                }
+                case WMMoveType.ToNewCollection: {
+                  break;
+                }
+                case WMMoveType.Swap: {
+                  break;
+                }
+              }
+            }
           }
+          // get rid of the hover/click colour
+          _tbMouseMove(eventPos);
+          _tbMouseUp(eventPos, button);
+
           _drag = null;
           _setCursor(dragCursor());
-          _drag = null;
         } else {
           if (_tbMouseUp(eventPos, button)) return;
 

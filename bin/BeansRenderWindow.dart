@@ -28,6 +28,9 @@ class BeansRenderWindow extends RenderWindow {
     SetColour(colour);
     cFillRect(pos.x, pos.y, size.x, size.y);
   }
+  void FillRectCentered(V2 pos, V2 size, [Colour? colour]) {
+    FillRect(pos - (size ~/ 2), size, colour);
+  }
 
   /// Default text drawing functions are weird around newlines
   void DrawText(String text, V2 pos, Colour colour, [BeansFont? font]) {

@@ -65,8 +65,8 @@ class BeansRenderer {
     final start = DateTime.now();
 
     while (!_shouldQuit) {
-      _paint();
       _processAllEvents();
+      _paint();
     }
 
     final end = DateTime.now();
