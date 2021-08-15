@@ -86,6 +86,12 @@ def codegen(files: list[ParsedGenFile]) -> str:
             # exclude generated files so cloc actually shows real results
             f"cloc . --exclude-list={CLOC_EXCLUDE_LIST_PATH}"
         ]
+    ) + generate_makefile_item(
+        "cloc-by-file",
+        [],
+        [
+            f"cloc . --exclude-list={CLOC_EXCLUDE_LIST_PATH} --by-file"
+        ]
     ) + out
 
     return out

@@ -18,6 +18,9 @@ clean:
 cloc:
 	cloc . --exclude-list=.cloc_exclude_list.txt
 
+cloc-by-file:
+	cloc . --exclude-list=.cloc_exclude_list.txt --by-file
+
 build/native/SDL/libRenderWindow.so: native/SDL/RenderWindow.c
 	mkdir -p build/native/SDL
 	gcc -shared -o build/native/SDL/libRenderWindow.so -fPIC -I. native/SDL/RenderWindow.c -lSDL2 -lSDL2_ttf

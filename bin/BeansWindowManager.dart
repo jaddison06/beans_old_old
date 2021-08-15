@@ -220,11 +220,11 @@ class BeansWindowManager extends XYPointer {
         colour: Colours.yellow,
       ),
       ColourWindow(
-        minSize: V2(1500, 200),
+        minSize: V2(1920, 200),
         colour: Colours.blue,
       ),
       ColourWindow(
-        minSize: V2(1800, 100),
+        minSize: V2(1000, 100),
         colour: Colours.cyan,
       ),
       ColourWindow(
